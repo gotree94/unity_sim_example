@@ -10,33 +10,33 @@
 
 ## 목차
 
--1. [Unity 설치하기 (Windows)](#-1-unity-설치하기-windows)
-0. [Asset Store 예제로 Unity 익히기](#0-asset-store-예제로-unity-익히기)
-1. [프로젝트 생성 및 기본 설정](#1-프로젝트-생성-및-기본-설정)
-2. [지면(Ground) 만들기](#2-지면ground-만들기)
-3. [로봇 몸통(Cube) 만들기](#3-로봇-몸통cube-만들기)
-4. [로봇 바퀴(Cylinder) 만들기](#4-로봇-바퀴cylinder-만들기)
-5. [물리 효과 적용 (Rigidbody 및 Collider)](#5-물리-효과-적용-rigidbody-및-collider)
-6. [충돌 검사 윤곽선 확인](#6-충돌-검사-윤곽선-확인)
-7. [접촉 및 마찰 매개변수 (Physic Material)](#7-접촉-및-마찰-매개변수-physic-material)
-8. [객체의 색상 변경 (Material)](#8-객체의-색상-변경-material)
-9. [키보드 입력으로 로봇 조종하기](#9-키보드-입력으로-로봇-조종하기)
-10. [최종 테스트 및 정리](#10-최종-테스트-및-정리)
-11. [외부 Python 프로그램과 연결하기](#11-외부-python-프로그램과-연결하기)
+1. [Unity 설치하기 (Windows)](#1-unity-설치하기-windows)
+2. [Asset Store 예제로 Unity 익히기](#2-asset-store-예제로-unity-익히기)
+3. [프로젝트 생성 및 기본 설정](#3-프로젝트-생성-및-기본-설정)
+4. [지면(Ground) 만들기](#4-지면ground-만들기)
+5. [로봇 몸통(Cube) 만들기](#5-로봇-몸통cube-만들기)
+6. [로봇 바퀴(Cylinder) 만들기](#6-로봇-바퀴cylinder-만들기)
+7. [물리 효과 적용 (Rigidbody 및 Collider)](#7-물리-효과-적용-rigidbody-및-collider)
+8. [충돌 검사 윤곽선 확인](#8-충돌-검사-윤곽선-확인)
+9. [접촉 및 마찰 매개변수 (Physic Material)](#9-접촉-및-마찰-매개변수-physic-material)
+10. [객체의 색상 변경 (Material)](#10-객체의-색상-변경-material)
+11. [키보드 입력으로 로봇 조종하기](#11-키보드-입력으로-로봇-조종하기)
+12. [최종 테스트 및 정리](#12-최종-테스트-및-정리)
+13. [외부 Python 프로그램과 연결하기](#13-외부-python-프로그램과-연결하기)
 
 ---
 
-## -1. Unity 설치하기 (Windows)
+## 1. Unity 설치하기 (Windows)
 
 > **목적**: Windows PC에 Unity 개발 환경을 완전히 설치  
 > **소요 시간**: 약 15~20분  
 > **전제 조건**: 인터넷 연결, 디스크 여유 공간 10GB 이상
 
-### -1-1. Unity란?
+### 1-1. Unity란?
 
 Unity는 게임 개발부터 로봇 시뮬레이션, VR/AR, 건축 시뮬레이션까지 다양한 분야에서 사용되는 **3D/2D 게임 엔진**입니다. Unreal Engine과 함께 세계에서 가장 많이 사용되는 게임 엔진 중 하나이며, 로봇 공학 분야에서도 시뮬레이션 도구로 널리 사용됩니다.
 
-### -1-2. Unity Hub 설치
+### 1-2. Unity Hub 설치
 
 Unity Hub는 여러 Unity 버전을 관리하고 프로젝트를 쉽게 생성/관리할 수 있게 해주는 프로그램입니다.
 
@@ -61,7 +61,7 @@ Unity Hub는 여러 Unity 버전을 관리하고 프로젝트를 쉽게 생성/�
    - Unity 계정이 없다면 **"Create account"**를 클릭하여 무료로 가입합니다.
    - 학교 이메일이 있다면 **Unity Student** 라이선스를 무료로 받을 수 있습니다.
 
-### -1-3. Unity Editor 설치
+### 1-3. Unity Editor 설치
 
 Unity Hub를 설치했다면 이제 실제 Unity 에디터를 설치해야 합니다.
 
@@ -98,7 +98,7 @@ Unity 에디터와 함께 설치할 모듈을 선택합니다:
 3. **"Install"** 버튼을 클릭합니다.
 4. 설치가 완료될 때까지 기다립니다 (약 10~20분, 인터넷 속도에 따라 다름).
 
-### -1-4. Visual Studio 설치 (이미 설치되어 있지 않은 경우)
+### 1-4. Visual Studio 설치 (이미 설치되어 있지 않은 경우)
 
 Visual Studio는 Unity에서 C# 스크립트를 작성할 때 사용하는 IDE입니다.
 
@@ -106,14 +106,14 @@ Visual Studio는 Unity에서 C# 스크립트를 작성할 때 사용하는 IDE�
 2. 수동으로 설치하려면 **https://visualstudio.microsoft.com/ko-kr/downloads/** 에서 **Community** 버전을 다운로드합니다.
 3. 설치 시 **"Unity 게임 개발"** 워크로드를 선택합니다.
 
-### -1-5. Unity 에디터 첫 실행
+### 1-5. Unity 에디터 첫 실행
 
 1. Unity Hub의 **"Projects"** 탭으로 돌아갑니다.
 2. **"New project"** 버튼을 클릭합니다.
 3. Unity 에디터가 처음 열리면 몇 가지 초기 설정이 진행됩니다.
 4. **"Dark"** 테마를 선택하는 것을 추천합니다 (눈의 피로 감소).
 
-### -1-6. Windows 방화벽 설정
+### 1-6. Windows 방화벽 설정
 
 Python과의 연결을 위해 Unity가 네트워크 통신을 할 수 있어야 합니다.
 
@@ -131,7 +131,7 @@ Python과의 연결을 위해 Unity가 네트워크 통신을 할 수 있어야 
 
 > 💡 **팁**: Python에서 Unity로 연결할 때 "연결 거부" 오류가 나면 이 설정이 되어 있지 않은 경우가 많습니다.
 
-### -1-7. 설치 확인 체크리스트
+### 1-7. 설치 확인 체크리스트
 
 Unity가 올바르게 설치되었는지 확인합니다:
 
@@ -141,7 +141,7 @@ Unity가 올바르게 설치되었는지 확인합니다:
 - [ ] Visual Studio에서 C# 파일을 열 수 있는지
 - [ ] Unity 에디터의 Scene/Game/Hierarchy/Inspector/Project 창이 모두 보이는지
 
-### -1-8. Unity 에디터 레이아웃 확인
+### 1-8. Unity 에디터 레이아웃 확인
 
 Unity 에디터가 열리면 기본 레이아웃을 확인합니다:
 
@@ -167,14 +167,14 @@ Unity 에디터가 열리면 기본 레이아웃을 확인합니다:
 
 ---
 
-## 0. Asset Store 예제로 Unity 익히기
+## 2. Asset Store 예제로 Unity 익히기
 
 > **목적**: Unity 에디터의 기본적인 조작법과 구조를 직접 체험하여 익숙해지는 과정  
 > **소요 시간**: 약 30~40분
 
 본격적으로 로봇을 만들기 전에, Unity Asset Store에서 완성된 게임 예제를 다운로드하여 플레이해보면서 Unity의 기본 작동 방식을 체득합니다.
 
-### 0-1. Unity Hub 실행 및 기존 프로젝트 열기
+### 2-1. Unity Hub 실행 및 기존 프로젝트 열기
 
 1. **Unity Hub**를 실행합니다.
 2. 좌측의 **"Projects"** 탭을 클릭합니다.
@@ -183,7 +183,7 @@ Unity 에디터가 열리면 기본 레이아웃을 확인합니다:
    - 이름: **"UnityExplorer"** (예시)
 4. 프로젝트가 열리면 Unity 에디터의 각 영역을 살펴봅니다.
 
-### 0-2. Unity 에디터 레이아웃 이해하기
+### 2-2. Unity 에디터 레이아웃 이해하기
 
 > 이전 단계(-1-8)에서 이미 레이아웃을 확인했다면, 각 창의 역할을 복습하는 정도로 진행합니다.
 
@@ -215,7 +215,7 @@ Unity 에디터는 다음과 같은 영역으로 구성됩니다:
 
 > 💡 **팁**: 에디터 레이아웃은 **상단 메뉴 > Window > Layouts**에서 변경할 수 있습니다.
 
-### 0-3. Asset Store 접속
+### 2-3. Asset Store 접속
 
 Unity에서 직접 Asset Store를 접속하는 방법과 웹 브라우저로 접속하는 방법이 있습니다.
 
@@ -232,7 +232,7 @@ Unity에서 직접 Asset Store를 접속하는 방법과 웹 브라우저로 접
    - Unity Hub를 설치했다면 이미 계정이 있을 것입니다.
    - 계정이 없다면 무료로 가입할 수 있습니다.
 
-### 0-4. 무료 3D 게임 예제 검색 및 다운로드
+### 2-4. 무료 3D 게임 예제 검색 및 다운로드
 
 Asset Store에서 초심자가 체험하기 좋은 무료 에셋을 검색합니다.
 
@@ -334,7 +334,7 @@ Assets/
 +-- Resources/     <- 런타임에 로드되는 에셋
 ```
 
-### 0-6. Play 모드로 게임 플레이
+### 2-6. Play 모드로 게임 플레이
 
 이제 실제로 게임을 플레이해봅니다.
 
@@ -356,7 +356,7 @@ Assets/
 
 4. 플레이를 멈추려면 **▶ (Play)** 버튼을 다시 클릭합니다.
 
-### 0-7. 간단한 수정 체험
+### 2-7. 간단한 수정 체험
 
 예제 프로젝트를 직접 수정해보면서 Unity의 편집 방식을 체득합니다.
 
@@ -390,7 +390,7 @@ Assets/
 3. 복제된 오브젝트의 위치를 변경하여 씬에 추가합니다.
 4. Play 모드에서 복제된 오브젝트도 같은 동작을 하는지 확인합니다.
 
-### 0-8. 핵심 개념 정리
+### 2-8. 핵심 개념 정리
 
 Unity를 사용하기 전에 반드시 이해해야 할 핵심 개념들을 정리합니다.
 
@@ -405,7 +405,7 @@ Unity를 사용하기 전에 반드시 이해해야 할 핵심 개념들을 정�
 | **Script** | C# 코드로 게임 로직을 구현 | 연극 대본 |
 | **Asset Store** | Unity 에셋을 사고파는 마켓플레이스 | 앱스토어 같은 곳 |
 
-### 0-9. 다음 단계로 넘어가기
+### 2-9. 다음 단계로 넘어가기
 
 위의 예제 프로젝트를 체험하면서 Unity에 대한 감을 잡았다면, 이제 직접 로봇을 만들어보는 메인 튜토리얼로 넘어갑니다.
 
@@ -414,9 +414,9 @@ Unity를 사용하기 전에 반드시 이해해야 할 핵심 개념들을 정�
 
 ---
 
-## 1. 프로젝트 생성 및 기본 설정
+## 3. 프로젝트 생성 및 기본 설정
 
-### 1-1. Unity Hub에서 새 프로젝트 만들기
+### 3-1. Unity Hub에서 새 프로젝트 만들기
 
 1. **Unity Hub**를 실행합니다.
 2. 좌측 상단의 **"New project"** 버튼을 클릭합니다.
@@ -425,13 +425,13 @@ Unity를 사용하기 전에 반드시 이해해야 할 핵심 개념들을 정�
 4. 프로젝트 이름을 **"RobotTutorial"**로 입력합니다.
 5. 프로젝트 저장 위치를 설정한 뒤 **"Create project"** 버튼을 클릭합니다.
 
-### 1-2. 씬(Scene) 확인
+### 3-2. 씬(Scene) 확인
 
 1. 프로젝트가 열리면 기본 씬이 로드됩니다.
 2. Unity 상단 메뉴에서 **File > New Scene**을 클릭하여 새로운 씬을 만듭니다.
 3. **File > Save As**로 씬 이름을 **"RobotScene"**으로 저장합니다.
 
-### 1-3. 씬 구조 이해하기
+### 3-3. 씬 구조 이해하기
 
 Hierarchy 창(좌측)에는 현재 씬에 있는 모든 게임 오브젝트가 나열됩니다. 기본적으로 다음 오브젝트들이 있습니다:
 
@@ -444,41 +444,41 @@ Hierarchy 창(좌측)에는 현재 씬에 있는 모든 게임 오브젝트가 �
 
 ---
 
-## 2. 지면(Ground) 만들기
+## 4. 지면(Ground) 만들기
 
 로봇이 서 있을 바닥이 필요합니다.
 
-### 2-1. Plane 생성
+### 4-1. Plane 생성
 
 1. Hierarchy 창의 빈 공간을 **우클릭**합니다.
 2. **3D Object > Plane**을 클릭합니다.
 3. 생성된 Plane의 이름을 **"Ground"**로 변경합니다.
    - 이름을 바꾸려면 Hierarchy에서 해당 오브젝트를 선택한 뒤, Inspector 상단의 이름 필드를 수정하거나, 오브젝트를 선택한 상태에서 **F2** 키를 누릅니다.
 
-### 2-2. Plane 크기 설정
+### 4-2. Plane 크기 설정
 
 1. Hierarchy에서 **Ground**를 선택합니다.
 2. Inspector 창에서 **Transform** 컴포넌트를 찾습니다.
 3. **Scale** 값을 **X: 5, Y: 1, Z: 5**로 설정합니다.
    - 이렇게 하면 바닥이 충분히 넓어져서 로봇이 움직여도 떨어지지 않습니다.
 
-### 2-3. Ground 색상 설정 (선택사항)
+### 4-3. Ground 색상 설정 (선택사항)
 
 Ground 색상을 나중에 Material로 변경할 수 있지만, 일단 놔둡니다. 나중에 8절에서 색상을 지정할 때 함께 진행합니다.
 
 ---
 
-## 3. 로봇 몸통(Cube) 만들기
+## 5. 로봇 몸통(Cube) 만들기
 
 Isaac Sim 튜토리얼에서는 **Create > Shape > Cube**로 상자를 만들고 Z축 위치와 Scale을 변경했습니다. Unity에서는 다음과 같이 진행합니다.
 
-### 3-1. Cube 생성
+### 5-1. Cube 생성
 
 1. Hierarchy 창의 빈 공간을 **우클릭**합니다.
 2. **3D Object > Cube**를 클릭합니다.
 3. 생성된 Cube의 이름을 **"Body"**로 변경합니다.
 
-### 3-2. Transform 설정
+### 5-2. Transform 설정
 
 1. Hierarchy에서 **Body**를 선택합니다.
 2. Inspector 창의 **Transform** 컴포넌트에서 값을 설정합니다.
@@ -502,7 +502,7 @@ Isaac Sim 튜토리얼에서는 **Create > Shape > Cube**로 상자를 만들고
 - Y: `2`
 - Z: `0.5`
 
-### 3-3. 결과 확인
+### 5-3. 결과 확인
 
 Scene 창에서 Body가 지면 위에 떠 있는 것을 확인할 수 있습니다. 카메라 조작법:
 - **마우스 휠**: 줌 인/아웃
@@ -511,17 +511,17 @@ Scene 창에서 Body가 지면 위에 떠 있는 것을 확인할 수 있습니�
 
 ---
 
-## 4. 로봇 바퀴(Cylinder) 만들기
+## 6. 로봇 바퀴(Cylinder) 만들기
 
 Isaac Sim에서는 **Create > Shape > Cylinder**를 사용했습니다. Unity에서도 동일하게 Cylinder를 사용합니다.
 
-### 4-1. 첫 번째 바퀴 생성
+### 6-1. 첫 번째 바퀴 생성
 
 1. Hierarchy 창의 빈 공간을 **우클릭**합니다.
 2. **3D Object > Cylinder**를 클릭합니다.
 3. 생성된 Cylinder의 이름을 **"Wheel_Right"**로 변경합니다.
 
-### 4-2. 첫 번째 바퀴 Transform 설정
+### 6-2. 첫 번째 바퀴 Transform 설정
 
 Isaac Sim에서는:
 - Translate: (1.5, 0, 1.0)
@@ -546,7 +546,7 @@ Unity에서는 다음과 같이 설정합니다:
 
 > 💡 **팁**: Unity의 기본 Cylinder는 Y축을 기준으로 세워져 있으므로, Z축으로 90도 회전해야 Isaac Sim과 같은 방향(옆으로 눕힌 형태)이 됩니다.
 
-### 4-3. 두 번째 바퀴 생성 (복제)
+### 6-3. 두 번째 바퀴 생성 (복제)
 
 1. Hierarchy에서 **Wheel_Right**을 선택합니다.
 2. **Ctrl + D** 키를 눌러 복제합니다.
@@ -575,11 +575,11 @@ RobotScene
 
 ---
 
-## 5. 물리 효과 적용 (Rigidbody 및 Collider)
+## 7. 물리 효과 적용 (Rigidbody 및 Collider)
 
 이제 Isaac Sim에서 했던 것처럼 물리 효과를 적용합니다. 시뮬레이션을 돌리면 객체가 중력에 의해 떨어지도록 만들어야 합니다.
 
-### 5-1.理解하기: Unity의 물리 시스템
+### 7-1.理解하기: Unity의 물리 시스템
 
 Unity의 물리 시스템은 두 가지 핵심 컴포넌트로 구성됩니다:
 
@@ -590,7 +590,7 @@ Unity의 물리 시스템은 두 가지 핵심 컴포넌트로 구성됩니다:
 
 > Isaac Sim의 "Rigid Body with Colliders Preset" = Unity의 **Rigidbody + Collider** 조합
 
-### 5-2. Body에 Rigidbody 및 Box Collider 추가
+### 7-2. Body에 Rigidbody 및 Box Collider 추가
 
 1. Hierarchy에서 **Body**를 선택합니다.
 2. Inspector 창 하단의 **"Add Component"** 버튼을 클릭합니다.
@@ -611,7 +611,7 @@ Inspector에서 Rigidbody 컴포넌트의 값을 확인합니다:
 | Use Gravity | ✅ 체크 | 중력 적용 |
 | Is Kinematic | ❌ 체크 해제 | 물리 엔진에 의해 움직임 |
 
-### 5-3. 바퀴에 Rigidbody 및 Capsule Collider 추가
+### 7-3. 바퀴에 Rigidbody 및 Capsule Collider 추가
 
 1. Hierarchy에서 **Wheel_Right**을 선택합니다.
 2. **Add Component > Rigidbody**를 추가합니다.
@@ -629,14 +629,14 @@ Inspector에서 Rigidbody 컴포넌트의 값을 확인합니다:
 
 4. 같은 방법으로 **Wheel_Left**에도 Rigidbody와 Capsule Collider를 추가합니다.
 
-### 5-4. Ground에 Collider 추가
+### 7-4. Ground에 Collider 추가
 
 1. Hierarchy에서 **Ground**를 선택합니다.
 2. **Add Component > Mesh Collider**를 추가합니다.
    - Plane에는 Mesh Collider가 자동으로 추가되어 있을 수 있습니다.
 3. Rigidbody는 **추가하지 않습니다**. (바닥은 움직이면 안 됨)
 
-### 5-5. 시뮬레이션 테스트
+### 7-5. 시뮬레이션 테스트
 
 1. Unity 상단의 **▶ (Play)** 버튼을 클릭합니다.
 2. 로봇이 중력에 의해 떨어지는 것을 확인합니다.
@@ -649,16 +649,16 @@ Inspector에서 Rigidbody 컴포넌트의 값을 확인합니다:
 
 ---
 
-## 6. 충돌 검사 윤곽선 확인
+## 8. 충돌 검사 윤곽선 확인
 
 Isaac Sim에서는 **Show By Type > Physics > Colliders > All**로 윤곽선을 표시했습니다. Unity에서는 다음 방법을 사용합니다.
 
-### 6-1. Scene 뷰에서 충돌체 표시
+### 8-1. Scene 뷰에서 충돌체 표시
 
 1. Scene 창 상단의 **Gizmos** 드롭다운 메뉴를 클릭합니다.
 2. **"Gizmos"** 버튼이 활성화(파란색)되어 있는지 확인합니다.
 
-### 6-2. 전체 충돌체 윤곽선 표시 (Scene 뷰)
+### 8-2. 전체 충돌체 윤곽선 표시 (Scene 뷰)
 
 Unity의 Scene 뷰에서는 모든 Collider가 **초록색 와이어프레임**으로 자동 표시됩니다.
 
@@ -666,13 +666,13 @@ Unity의 Scene 뷰에서는 모든 Collider가 **초록색 와이어프레임**�
 1. Scene 창 상단의 **Draw Mode**를 **Shaded**에서 **Wireframe**으로 변경해 보세요.
 2. 또는 Scene 뷰의 **Gizmos** 버튼을 클릭하여 활성화하세요.
 
-### 6-3. Play 모드에서 충돌체 표시
+### 8-3. Play 모드에서 충돌체 표시
 
 1. Unity 상단 메뉴에서 **Edit > Project Settings**를 엽니다.
 2. 좌측에서 **Physics**를 선택합니다.
 3. 우측 하단의 **"Layer Collision Matrix"** 아래에 **"Queries Hit Triggers"** 옵션을 확인합니다.
 
-### 6-4. 커스텀 충돌체 시각화 (선택)
+### 8-4. 커스텀 충돌체 시각화 (선택)
 
 더 명확하게 충돌체를 보고 싶다면 스크립트를 사용할 수 있습니다:
 
@@ -717,11 +717,11 @@ public class ShowColliders : MonoBehaviour
 
 ---
 
-## 7. 접촉 및 마찰 매개변수 (Physic Material)
+## 9. 접촉 및 마찰 매개변수 (Physic Material)
 
 Isaac Sim에서는 **Create > Physics > Physics Material**로 마찰력과 탄성을 조절했습니다. Unity에서는 **Physic Material** (유니티에서는 "Physic"이 정확한 명칭)을 사용합니다.
 
-### 7-1. Physic Material 생성
+### 9-1. Physic Material 생성
 
 1. Project 창의 **Assets** 폴더에서 우클릭합니다.
 2. **Create > Physic Material**을 클릭합니다.
@@ -731,7 +731,7 @@ Isaac Sim에서는 **Create > Physics > Physics Material**로 마찰력과 탄�
 > - **Physic Material**: 3D 물리용 (Collider에 적용)
 > - **Physics Material 2D**: 2D 물리용
 
-### 7-2. 매개변수 설정
+### 9-2. 매개변수 설정
 
 RobotMaterial을 선택하고 Inspector에서 다음 값을 설정합니다:
 
@@ -747,7 +747,7 @@ RobotMaterial을 선택하고 Inspector에서 다음 값을 설정합니다:
 > - 마찰력이 높을수록 바퀴가 미끄러지지 않음
 > - 탄성이 높을수록 강하게 튕겨옴
 
-### 7-3. Collider에 Physic Material 적용
+### 9-3. Collider에 Physic Material 적용
 
 **Body (Box Collider)에 적용:**
 1. Hierarchy에서 **Body**를 선택합니다.
@@ -758,7 +758,7 @@ RobotMaterial을 선택하고 Inspector에서 다음 값을 설정합니다:
 1. **Wheel_Right**과 **Wheel_Left**을 각각 선택합니다.
 2. 각각의 **Capsule Collider**의 **Material** 필드에 **RobotMaterial**을 적용합니다.
 
-### 7-4. Ground용 별도 Material (선택)
+### 9-4. Ground용 별도 Material (선택)
 
 지면의 마찰력을 별도로 설정하고 싶다면:
 
@@ -775,44 +775,44 @@ RobotMaterial을 선택하고 Inspector에서 다음 값을 설정합니다:
 
 ---
 
-## 8. 객체의 색상 변경 (Material)
+## 10. 객체의 색상 변경 (Material)
 
 Isaac Sim에서는 **Create > Material > OmniPBR**을 사용하여 Body와 Wheel의 색상을 변경했습니다. Unity에서는 **Material**과 **Shader**를 사용합니다.
 
-### 8-1. URP용 Material 생성 (URP 프로젝트인 경우)
+### 10-1. URP용 Material 생성 (URP 프로젝트인 경우)
 
 1. Project 창의 **Assets** 폴더에서 우클릭합니다.
 2. **Create > Material**을 클릭합니다.
 3. 이름을 **"BodyMaterial"**로 변경합니다.
 4. Inspector 상단의 **Shader** 드롭다운에서 **Universal Render Pipeline > Lit**을 선택합니다.
 
-### 8-1-2. Built-in Render Pipeline용 Material (3D Core 프로젝트인 경우)
+### 10-1-2. Built-in Render Pipeline용 Material (3D Core 프로젝트인 경우)
 
 1. Project 창에서 우클릭합니다.
 2. **Create > Material**을 클릭합니다.
 3. 이름을 **"BodyMaterial"**로 변경합니다.
 4. Inspector 상단의 **Shader**에서 **Standard**가 선택되어 있는지 확인합니다.
 
-### 8-2. BodyMaterial 색상 설정
+### 10-2. BodyMaterial 색상 설정
 
 1. **BodyMaterial**을 선택합니다.
 2. Inspector에서 **Albedo** 옆의 색상 블록을 클릭합니다.
 3. 색상 선택기에서 **파란색 (R: 50, G: 100, B: 200)** 정도를 선택합니다.
 4. Metallic 값을 `0.3`, Smoothness 값을 `0.7` 정도로 조정합니다.
 
-### 8-3. WheelMaterial 생성 및 설정
+### 10-3. WheelMaterial 생성 및 설정
 
 1.同样的 방법으로 새 Material을 만듭니다.
 2. 이름을 **"WheelMaterial"**로 변경합니다.
 3. **Albedo** 색상을 **검은색 (R: 30, G: 30, B: 30)** 으로 설정합니다.
 4. Metallic: `0.5`, Smoothness: `0.3`으로 설정합니다.
 
-### 8-4. GroundMaterial 생성 및 설정
+### 10-4. GroundMaterial 생성 및 설정
 
 1. 새 Material을 만들고 이름을 **"GroundMaterial"**로 합니다.
 2. **Albedo** 색상을 **밝은 회색 (R: 200, G: 200, B: 200)** 으로 설정합니다.
 
-### 8-5. Material 적용
+### 10-5. Material 적용
 
 **Body에 적용:**
 1. Hierarchy에서 **Body**를 선택합니다.
@@ -827,7 +827,7 @@ Isaac Sim에서는 **Create > Material > OmniPBR**을 사용하여 Body와 Wheel
 1. **Ground**를 선택합니다.
 2. Mesh Renderer의 **Element 0**에 **GroundMaterial**을 적용합니다.
 
-### 8-6. 최종 구조
+### 10-6. 최종 구조
 
 ```
 Assets/
@@ -843,11 +843,11 @@ Assets/
 
 ---
 
-## 9. 키보드 입력으로 로봇 조종하기
+## 11. 키보드 입력으로 로봇 조종하기
 
 이제 로봇을 키보드로 조종하는 기능을 추가합니다. **W, A, S, D, X** 또는 **화살표 키**로 이동하고, **스페이스바**로 멈추는 기능입니다.
 
-### 9-1. Robot 빈 오브젝트 만들기
+### 11-1. Robot 빈 오브젝트 만들기
 
 모든 로봇 파트를 하나의 부모 오브젝트로 묶습니다.
 
@@ -856,14 +856,14 @@ Assets/
 3. **Body**, **Wheel_Right**, **Wheel_Left**을 모두 선택합니다.
 4. 선택된 오브젝트들을 **Robot** 오브젝트 위로 **드래그**하여 자식으로 만듭니다.
 
-### 9-2. RobotController 스크립트 만들기
+### 11-2. RobotController 스크립트 만들기
 
 1. Project 창의 **Assets** 폴더에서 우클릭합니다.
 2. **Create > C# Script**를 클릭합니다.
 3. 이름을 **"RobotController"**로 변경합니다.
 4. 스크립트를 **더블클릭**하여 Visual Studio 또는 Visual Studio Code에서 엽니다.
 
-### 9-3. 스크립트 코드 작성
+### 11-3. 스크립트 코드 작성
 
 다음 코드를 기존 코드에 **전체 교체**합니다:
 
@@ -1009,7 +1009,7 @@ public class RobotController : MonoBehaviour
 > - Unity 2022 이하: `rb.velocity`, `rb.angularVelocity`
 > - Unity 2023 이상: `rb.linearVelocity`, `rb.angularVelocity`
 
-### 9-4. 스크립트를 Robot에 적용
+### 11-4. 스크립트를 Robot에 적용
 
 1. Unity로 돌아옵니다.
 2. Hierarchy에서 **Robot** 오브젝트를 선택합니다.
@@ -1023,7 +1023,7 @@ public class RobotController : MonoBehaviour
 | Rotation Speed | `120` | 회전 속도 |
 | Jump Force | `7` | 점프 힘 (현재 사용 안 함) |
 
-### 9-5. Rigidbody 추가 (Robot 부모 오브젝트)
+### 11-5. Rigidbody 추가 (Robot 부모 오브젝트)
 
 Robot 부모 오브젝트에도 Rigidbody가 있어야 합니다.
 
@@ -1039,7 +1039,7 @@ Robot 부모 오브젝트에도 Rigidbody가 있어야 합니다.
 
 > 💡 **팁**: 부모 오브젝트의 Rigidbody를 Kinematic으로 설정하면, 자식 오브젝트(바퀴)들이 물리적으로 자유롭게 움직이면서도 부모를 따라갑니다.
 
-### 9-6. Ground에 태그(Tag) 설정
+### 11-6. Ground에 태그(Tag) 설정
 
 점프 기능을 위해 바닥에 "Ground" 태그를 지정합니다.
 
@@ -1050,7 +1050,7 @@ Robot 부모 오브젝트에도 Rigidbody가 있어야 합니다.
 5. 이름을 **"Ground"**로 입력하고 **Save**를 클릭합니다.
 6. 다시 Hierarchy에서 **Ground**를 선택하고, Inspector의 **Tag** 드롭다운에서 **"Ground"**를 선택합니다.
 
-### 9-7. 키보드 조작법 요약
+### 11-7. 키보드 조작법 요약
 
 | 키 | 동작 |
 |----|------|
@@ -1061,7 +1061,7 @@ Robot 부모 오브젝트에도 Rigidbody가 있어야 합니다.
 | **X** | 후진 (S와 동일) |
 | **스페이스바** | 즉시 멈춤 (속도 0으로 초기화) |
 
-### 9-8. Play 버튼으로 테스트
+### 11-8. Play 버튼으로 테스트
 
 1. Unity 상단의 **▶ (Play)** 버튼을 클릭합니다.
 2. Game 창에서 키보드를 눌러 로봇을 조종합니다.
@@ -1070,9 +1070,9 @@ Robot 부모 오브젝트에도 Rigidbody가 있어야 합니다.
 
 ---
 
-## 10. 최종 테스트 및 정리
+## 12. 최종 테스트 및 정리
 
-### 10-1. 전체 기능 테스트 체크리스트
+### 12-1. 전체 기능 테스트 체크리스트
 
 Play 모드에서 다음 항목을 모두 확인합니다:
 
@@ -1086,7 +1086,7 @@ Play 모드에서 다음 항목을 모두 확인합니다:
 - [ ] 로봇이 지면을 뚫고 지나가지 않는지
 - [ ] 로봇의 색상이 올바르게 표시되는지
 
-### 10-2. 최종 씬 구조
+### 12-2. 최종 씬 구조
 
 ```
 RobotScene
@@ -1099,7 +1099,7 @@ RobotScene
 │   └── Wheel_Left      ← Rigidbody + Capsule Collider + WheelMaterial
 ```
 
-### 10-3. 최종 Assets 구조
+### 12-3. 최종 Assets 구조
 
 ```
 Assets/
@@ -1170,13 +1170,13 @@ Assets/
 
 ---
 
-## 11. 외부 Python 프로그램과 연결하기
+## 13. 외부 Python 프로그램과 연결하기
 
 > **목적**: Unity에서 만든 로봇을 외부 Python 프로그램에서 키보드 입력으로 원격 제어  
 > **소요 시간**: 약 40~60분  
 > **전제 조건**: 9절(키보드 입력으로 로봇 조종하기)을 완료해야 합니다
 
-### 11-1. 개요: 왜 외부 연결이 필요한가?
+### 13-1. 개요: 왜 외부 연결이 필요한가?
 
 지금까지는 Unity 안에서 직접 키보드를 눌러 로봇을 조종했습니다. 하지만 실제 로봇 공학이나 자율주행 시뮬레이션에서는 다음과 같은 이유로 외부 프로그램과의 연결이 필요합니다:
 
@@ -1209,7 +1209,7 @@ Unity와 Python을 연결하는 방법은 여러 가지가 있지만, 초심자�
 4. 입력된 키 값을 문자열로 전송 (예: "W", "A", "SPACE")
 5. Unity에서 값을 수신하여 로봇을 움직임
 
-### 11-3. Unity 측: TCP 서버 스크립트 만들기
+### 13-3. Unity 측: TCP 서버 스크립트 만들기
 
 #### 1) 새 스크립트 생성
 
@@ -1629,7 +1629,7 @@ RobotScene
     └── Wheel_Left
 ```
 
-### 11-4. Python 측: TCP 클라이언트 프로그램 만들기
+### 13-4. Python 측: TCP 클라이언트 프로그램 만들기
 
 #### 1) Python 설치 확인
 
@@ -1802,7 +1802,7 @@ if __name__ == "__main__":
     main()
 ```
 
-### 11-5. 테스트 방법
+### 13-5. 테스트 방법
 
 #### 1단계: Unity 실행
 
@@ -1852,7 +1852,7 @@ Python 터미널에서 키보드를 누르면 Unity의 로봇이 움직입니다
 | **SPACE** | 로봇 정지 |
 | **Q** | 프로그램 종료 |
 
-### 11-6. 고급: 키보드 없이 텍스트 입력으로 제어하기
+### 13-6. 고급: 키보드 없이 텍스트 입력으로 제어하기
 
 `keyboard` 라이브러리 없이도 Python 프로그램은 동작합니다. 이 경우 터미널에서 명령어를 직접 입력합니다:
 
@@ -1864,7 +1864,7 @@ Python 터미널에서 키보드를 누르면 Unity의 로봇이 움직입니다
 명령 입력> Q
 ```
 
-### 11-7. 문제 해결
+### 13-7. 문제 해결
 
 #### 문제 1: "연결 실패" 메시지가 나타남
 
@@ -1927,7 +1927,7 @@ with keyboard.Listener(on_press=on_press) as listener:
 
 현재 구현에서는 여러 Python 프로그램이 동시에 연결할 수 있습니다. 각 클라이언트는 별도 스레드에서 처리됩니다. 하지만 명령은 마지막에 수신된 것만 적용됩니다.
 
-### 11-8. 전체 연결 구조도
+### 13-8. 전체 연결 구조도
 
 ```
 ┌───────────────────────────────────────────────────────┐
@@ -1966,7 +1966,7 @@ with keyboard.Listener(on_press=on_press) as listener:
 └───────────────────────────────────────────────────────┘
 ```
 
-### 11-9. 명령 프로토콜 정리
+### 13-9. 명령 프로토콜 정리
 
 Unity와 Python 사이에서 주고받는 명령어 목록:
 
@@ -1988,7 +1988,7 @@ Unity와 Python 사이에서 주고받는 명령어 목록:
 > 💡 **팁**: 명령어는 대소문자를 구분하지 않습니다. `w`, `W`, `Woow` 모두 `W`로 처리됩니다.  
 > 각 명령은 줄바꿈(`\n`)으로 구분하여 전송합니다.
 
-### 11-10. 최종 프로젝트 구조
+### 13-10. 최종 프로젝트 구조
 
 ```
 RobotTutorial/
