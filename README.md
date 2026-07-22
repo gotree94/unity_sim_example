@@ -1,9 +1,9 @@
 # Unity 로봇 만들기 튜토리얼 - Isaac Sim 예제 Unity 구현
 
 > **대상**: Unity 초심자  
-> **소요 시간**: 약 130~180분  
+> **소요 시간**: 약 130 ~ 180분  
 > **사용 환경**: Windows 10/11  
-> **Unity 버전**: Unity 2022.3 LTS (2022년 9월~)  
+> **Unity 버전**: Unity 2022.3 LTS (2022년 9월 ~ )  
 > **목표**: Unity에 익숙해진 뒤, NVIDIA Isaac Sim 튜토리얼 2.2 "Add Simple Objects"를 Unity에서 구현하고, 외부 Python 프로그램에서 키보드 입력으로 로봇을 원격 제어하는 기능까지 구현
 
 ---
