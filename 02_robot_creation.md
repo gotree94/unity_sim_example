@@ -75,14 +75,14 @@ Isaac Sim (Z-up)          Unity (Y-up)
 
 | 파트 | Isaac Sim 설정 | Unity 설정 | 변환 내용 |
 |------|---------------|-----------|----------|
-| **Body (Cube)** | Scale: (1, 2, 0.5) | Scale: (1, 2, 0.5) | 스케일은 동일, 위치만 Y축으로 변환 |
-| **Body 위치** | Translate Z = 1 | Position Y = 1 | Z→Y축 변환 |
-| **Wheel (Cylinder)** | Orient Y = 90도 | Rotation Z = 90도 | Y→Z축 변환 (옆으로 눕히기) |
-| **Wheel 위치** | Translate: (1.5, 0, 1.0) | Position: (1.5, 0.5, 0) | Y→Z, Z→Y축 변환 |
+| **Body (Cube)** | Scale: (2, 1, 0.5) | Scale: (2, 0.5, 1) | X→X, Y→Z, Z→Y축 변환 |
+| **Body 위치** | Translate Z = 0.5 | Position Y = 0.25 | Z→Y축 변환 (높이 절반) |
+| **Wheel (Cylinder)** | Rotate X = 90도 | Rotation X = 90도 | X축 회전 동일 |
+| **Wheel 위치** | Translate: (0.5, 0.75, 0) | Position: (0.5, 0, 0.75) | Y→Z, Z→Y축 변환 |
 
 #### 높이 축 묶기 (부모-자식 관계)
 
-최종적으로 Body와 Wheel은 하나의 **Robot** 빈 오브젝트 아래에 자식으로 배치됩니다:
+最終적으로 Body와 Wheel은 하나의 **Robot** 빈 오브젝트 아래에 자식으로 배치됩니다:
 
 ```
 Robot (빈 오브젝트, 부모)
@@ -161,22 +161,24 @@ Isaac Sim 튜토리얼에서는 **Create > Shape > Cube**로 상자를 만들고
 
 | 속성 | Isaac Sim 값 | Unity 대응 | Unity 값 |
 |------|-------------|-----------|---------|
-| Position | (0, 0, 1) | Position Y (Unity에서는 Y축이 위) | **(0, 1, 0)** |
-| Scale | (1, 2, 0.5) | Scale | **(1, 2, 0.5)** |
+| Position | (0, 0, 0.5) | Position Y (Unity에서는 Y축이 위) | **(0, 0.25, 0)** |
+| Scale | (2, 1, 0.5) | Scale (X→X, Y→Z, Z→Y) | **(2, 0.5, 1)** |
 
-> ⚠️ **중요 차이점**: Isaac Sim에서는 Z축이 위쪽이지만, Unity에서는 **Y축이 위쪽**입니다. 따라서 Isaac Sim의 Translate Z=1은 Unity의 Position Y=1에 해당합니다.
+> ⚠️ **중요 차이점**: Isaac Sim에서는 Z축이 위쪽이지만, Unity에서는 **Y축이 위쪽**입니다. 
+> - Isaac Sim의 Scale (2, 1, 0.5) = 길이 2, 너비 1, 높이 0.5
+> - Unity의 Scale (2, 0.5, 1) = 길이 2, 높이 0.5, 너비 1
 
 #### 상세 설정 방법
 
 **Position:**
 - X: `0`
-- Y: `1` (지면 위에 떠 있도록)
+- Y: `0.25` (지면에 닿도록 설정: 높이 0.5의 절반)
 - Z: `0`
 
 **Scale:**
-- X: `1`
-- Y: `2`
-- Z: `0.5`
+- X: `2` (길이 - 앞뒤 방향)
+- Y: `0.5` (높이 - 위아래 방향)
+- Z: `1` (너비 - 좌우 방향)
 
 ### 5-3. 결과 확인
 
@@ -208,7 +210,7 @@ Unity에서는 다음과 같이 설정합니다:
 
 **Position:**
 - X: `0.5` (몸통 앞쪽)
-- Y: `0.5` (바닥에 닿도록 낮춤)
+- Y: `0.5` (바닥에 닿도록 설정: 바퀴 높이의 절반)
 - Z: `0.75` (몸통 오른쪽)
 
 **Rotation:**
@@ -217,11 +219,12 @@ Unity에서는 다음과 같이 설정합니다:
 - Z: `0`
 
 **Scale:**
-- X: `0.75`
+- X: `0.75` (반지름)
 - Y: `0.25` (Isaac Sim의 Height 0.25에 대응)
-- Z: `0.75` (Isaac Sim의 Radius 0.75에 대응)
+- Z: `0.75` (반지름)
 
 > 💡 **팁**: Unity의 기본 Cylinder는 Y축을 기준으로 세워져 있으므로, X축으로 90도 회전해야 Isaac Sim과 같은 방향(옆으로 눕힌 형태)이 됩니다.
+> 바퀴의 Y 위치는 0.5로 설정하여 지면에 닿도록 합니다 (바퀴 높이 0.25의 절반).
 
 ### 6-3. 세 개의 바퀴 추가 (복제)
 

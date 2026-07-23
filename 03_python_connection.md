@@ -463,8 +463,10 @@ RobotScene
 ├── NetworkManager    <- TCPServer (포트: 5000)
 └── Robot             <- RobotController + Rigidbody
     ├── Body
-    ├── Wheel_Right
-    └── Wheel_Left
+    ├── Front_Right
+    ├── Front_Left
+    ├── Rear_Right
+    └── Rear_Left
 ```
 
 ### 13-4. Python 측: TCP 클라이언트 프로그램 만들기
