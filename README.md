@@ -15,7 +15,7 @@
 | **1단계** | [Unity 설치 및 기초 학습](01_unity_installation.md) | Unity Hub/Editor 설치, 에디터 조작법, Asset Store 체험 | 약 45~60분 |
 | **2단계** | [로봇 제작](02_robot_creation.md) | 프로젝트 생성, 3D 모델링, 물리 효과, 키보드 조작 | 약 90~120분 |
 | **3단계** | [Python 연결](03_python_connection.md) | TCP/IP 통신, Python 원격 제어 | 약 40~60분 |
-| **4단계** | [Python 연결](03_python_connection.md) | TCP/IP 통신, Python 원격 제어 | 약 40~60분 |
+| **4단계** | [Unity AI 개발](04_Unity_AI_Development_Tutorial.md) | Unity AI 기능, 2D 게임, 자동차 시뮬레이션, ROS 연결 | 약 240~360분 |
 
 ---
 
@@ -41,6 +41,13 @@
     +-- TCPServer 스크립트로 Unity에서 서버 실행
     +-- Python 클라이언트 프로그램 작성
     +-- 키보드 입력으로 로봇 원격 제어
+    |
+[4단계] Unity AI 개발
+    |
+    +-- Unity AI, Sentis, Behavior 기능 개요
+    +-- AI로 2D 슈팅게임 만들기
+    +-- 3D 자동차 장난감 시뮬레이션
+    +-- Unity와 ROS2 연결
 ```
 
 ---
@@ -64,10 +71,11 @@
 
 ```
 unity_sim_example/
-├── README.md                    <- 이 파일 (튜토리얼 인덱스)
-├── 01_unity_installation.md     <- 1단계: Unity 설치 및 기초
-├── 02_robot_creation.md         <- 2단계: 로봇 제작
-└── 03_python_connection.md      <- 3단계: Python 연결
+├── README.md                              <- 이 파일 (튜토리얼 인덱스)
+├── 01_unity_installation.md               <- 1단계: Unity 설치 및 기초
+├── 02_robot_creation.md                   <- 2단계: 로봇 제작
+├── 03_python_connection.md                <- 3단계: Python 연결
+└── 04_Unity_AI_Development_Tutorial.md    <- 4단계: Unity AI 개발
 ```
 
 ---
