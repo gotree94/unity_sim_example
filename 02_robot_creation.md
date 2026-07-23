@@ -82,16 +82,19 @@ Isaac Sim (Z-up)          Unity (Y-up)
 
 #### 높이 축 묶기 (부모-자식 관계)
 
-最終적으로 Body와 Wheel은 하나의 **Robot** 빈 오브젝트 아래에 자식으로 배치됩니다:
+ 最終적으로 Body와 Wheel은 하나의 **Robot** 빈 오브젝트 아래에 자식으로 배치됩니다:
 
 ```
-Robot (빈 오브젝트, 부모)
-├── Body            ← Rigidbody + Box Collider (몸통)
-├── Front_Right     ← Rigidbody + Capsule Collider (오른쪽 앞바퀴)
-├── Front_Left      ← Rigidbody + Capsule Collider (왼쪽 앞바퀴)
-├── Rear_Right      ← Rigidbody + Capsule Collider (오른쪽 뒷바퀴)
-└── Rear_Left       ← Rigidbody + Capsule Collider (왼쪽 뒷바퀴)
+Robot (빈 오브젝트, 부모) ← Rigidbody (Use Gravity ✅, Is Kinematic ❌)
+├── Body            ← Box Collider (Rigidbody 없음)
+├── Front_Right     ← Capsule Collider (Rigidbody 없음)
+├── Front_Left      ← Capsule Collider (Rigidbody 없음)
+├── Rear_Right      ← Capsule Collider (Rigidbody 없음)
+└── Rear_Left       ← Capsule Collider (Rigidbody 없음)
 ```
+
+> ⚠️ **핵심**: Rigidbody는 Robot 부모에만 추가합니다. 각 파트에는 Collider만 추가합니다.
+> 이렇게 하면 로봇 전체가 하나의 물리 객체로 움직이고, 바퀴가 떨어지지 않습니다.
 
 > 💡 **팁**: 부모 오브젝트의 Transform을 기준으로 자식 오브젝트들의 상대 위치가 결정됩니다.
 > 나중에 5단계, 6단계에서 각 파트를 만들고, 11단계에서 이 구조로 묶게 됩니다.
@@ -810,9 +813,9 @@ Robot 부모 오브젝트에도 Rigidbody가 있어야 합니다.
 |------|---|
 | Mass | `1` |
 | Use Gravity | ✅ 체크 |
-| Is Kinematic | ✅ **체크** (부모 오브젝트는 직접 물리 적용 안 함) |
+| Is Kinematic | ❌ **체크 해제** (물리 엔진에 의해 움직임) |
 
-> 💡 **팁**: 부모 오브젝트의 Rigidbody를 Kinematic으로 설정하면, 자식 오브젝트(바퀴)들이 물리적으로 자유롭게 움직이면서도 부모를 따라갑니다.
+> ⚠️ **중요**: Is Kinematic을 체크하면 로봇이 물리적으로 움직이지 않습니다. 반드시 **체크 해제**하세요.
 
 ### 11-6. Ground에 태그(Tag) 설정
 
@@ -971,11 +974,10 @@ public class CameraFollow : MonoBehaviour
 
 로봇이 제대로 떨어지고 지면 위에 서려면 물리 시스템을 올바르게 설정해야 합니다.
 
-### 13-1. 로봇에 Rigidbody 추가
+> ⚠️ **핵심 원칙**: Rigidbody는 **Robot 부모 오브젝트에만** 추가합니다. Body와 바퀴에는 Collider만 추가합니다.
+> 각 파트에 Rigidbody를 개별적으로 추가하면 바퀴가 몸체에서 떨어져 나갑니다!
 
-**방법 1: 간단한 설정 (추천)**
-
-Robot 빈 오브젝트에 Rigidbody를 추가합니다:
+### 13-1. Robot 부모 오브젝트에 Rigidbody 추가
 
 1. Hierarchy에서 **Robot** 오브젝트를 선택합니다.
 2. **Add Component > Rigidbody**를 추가합니다.
@@ -989,23 +991,11 @@ Robot 빈 오브젝트에 Rigidbody를 추가합니다:
 | Use Gravity | ✅ 체크 | 중력 적용 |
 | Is Kinematic | ❌ 체크 해제 | 물리 엔진에 의해 움직임 |
 
-**방법 2: 개별 파트별 설정**
+### 13-2. Collider 추가 (Rigidbody 없이)
 
-각 파트에 개별적으로 Rigidbody를 추가합니다:
+각 파트에 충돌체만 추가합니다. **각 파트에는 Rigidbody를 추가하지 않습니다!**
 
-1. **Body**에 Rigidbody 추가:
-   - Mass: `5` (몸통은 더 무겁게)
-   - Use Gravity: ✅
-   - Is Kinematic: ❌
-
-2. **각 바퀴**에 Rigidbody 추가:
-   - Mass: `1`
-   - Use Gravity: ✅
-   - Is Kinematic: ❌
-
-### 13-2. Collider 추가
-
-각 파트에 충돌체를 추가합니다:
+> 💡 **팁**: Rigidbody는 Robot 부모에만 있고, 각 파트에는 Collider만 있습니다. 이렇게 하면 로봇 전체가 하나의 물리 객체로 움직이고, 바퀴가 떨어지지 않습니다.
 
 **Body에 Box Collider:**
 1. **Body**를 선택합니다.
@@ -1137,7 +1127,7 @@ Assets/
 
 ### Q1: 로봇이 움직이지 않아요
 - **RobotController** 스크립트가 **Robot** 오브젝트에 붙어있는지 확인
-- Rigidbody의 **Is Kinematic**이 체크되어 있는지 확인
+- Rigidbody의 **Is Kinematic**이 체크되어 있는지 확인 (체크 해제 필요)
 - Play 모드에서 Game 창이 활성화되어 있는지 확인 (키보드 입력은 Game 창에서만 작동)
 
 ### Q2: 로봇이 땅을 뚫고 지나가요
@@ -1154,6 +1144,11 @@ Assets/
 ### Q5: 키보드 입력이 안 먹혀요
 - Game 창을 **마우스로 클릭**하여 포커스를 맞춘 뒤 키보드를 누르세요.
 - 다른 UI 오브젝트가 입력을 가로채고 있는지 확인하세요.
+
+### Q6: 바퀴가 몸체에서 떨어져 나가요
+- **각 파트에 Rigidbody가 없는지 확인** (Body, 바퀴에는 Rigidbody 없음)
+- Rigidbody는 **Robot 부모 오브젝트에만** 있어야 합니다
+- 각 파트에는 **Collider만** 추가합니다
 
 ---
 
