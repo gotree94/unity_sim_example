@@ -15,6 +15,7 @@
 | **1단계** | [Unity 설치 및 기초 학습](01_unity_installation.md) | Unity Hub/Editor 설치, 에디터 조작법, Asset Store 체험 | 약 45~60분 |
 | **2단계** | [로봇 제작](02_robot_creation.md) | 프로젝트 생성, 3D 모델링, 물리 효과, 키보드 조작 | 약 90~120분 |
 | **3단계** | [Python 연결](03_python_connection.md) | TCP/IP 통신, Python 원격 제어 | 약 40~60분 |
+| **4단계** | [Python 연결](03_python_connection.md) | TCP/IP 통신, Python 원격 제어 | 약 40~60분 |
 
 ---
 
