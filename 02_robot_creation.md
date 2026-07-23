@@ -82,13 +82,15 @@ Isaac Sim (Z-up)          Unity (Y-up)
 
 #### 높이 축 묶기 (부모-자식 관계)
 
-最终적으로 Body와 Wheel은 하나의 **Robot** 빈 오브젝트 아래에 자식으로 배치됩니다:
+最終적으로 Body와 Wheel은 하나의 **Robot** 빈 오브젝트 아래에 자식으로 배치됩니다:
 
 ```
 Robot (빈 오브젝트, 부모)
-├── Body       ← Rigidbody + Box Collider (몸통)
-├── Wheel_Right ← Rigidbody + Capsule Collider (오른쪽 바퀴)
-└── Wheel_Left  ← Rigidbody + Capsule Collider (왼쪽 바퀴)
+├── Body            ← Rigidbody + Box Collider (몸통)
+├── Front_Right     ← Rigidbody + Capsule Collider (오른쪽 앞바퀴)
+├── Front_Left      ← Rigidbody + Capsule Collider (왼쪽 앞바퀴)
+├── Rear_Right      ← Rigidbody + Capsule Collider (오른쪽 뒷바퀴)
+└── Rear_Left       ← Rigidbody + Capsule Collider (왼쪽 뒷바퀴)
 ```
 
 > 💡 **팁**: 부모 오브젝트의 Transform을 기준으로 자식 오브젝트들의 상대 위치가 결정됩니다.
@@ -187,49 +189,58 @@ Scene 창에서 Body가 지면 위에 떠 있는 것을 확인할 수 있습니�
 
 ## 6. 로봇 바퀴(Cylinder) 만들기
 
-Isaac Sim에서는 **Create > Shape > Cylinder**를 사용했습니다. Unity에서도 동일하게 Cylinder를 사용합니다.
+Isaac Sim에서는 **Create > Shape > Cylinder**를 사용했습니다. Unity에서도 동일하게 Cylinder를 사용합니다. 최신 Isaac Sim 튜토리얼에서는 **4개의 바퀴**를 사용하므로, Unity에서도 4개의 바퀴를 만듭니다.
 
-### 6-1. 첫 번째 바퀴 생성
+### 6-1. 첫 번째 바퀴 생성 (Front_Right)
 
 1. Hierarchy 창의 빈 공간을 **우클릭**합니다.
 2. **3D Object > Cylinder**를 클릭합니다.
-3. 생성된 Cylinder의 이름을 **"Wheel_Right"**로 변경합니다.
+3. 생성된 Cylinder의 이름을 **"Front_Right"**로 변경합니다.
 
 ### 6-2. 첫 번째 바퀴 Transform 설정
 
 Isaac Sim에서는:
-- Translate: (1.5, 0, 1.0)
-- Orient Y: 90도
+- Scale: (0.75, 0.75, 0.25)
+- Rotate X: 90도
+- Translate: (0.5, 0.75, 0)
 
 Unity에서는 다음과 같이 설정합니다:
 
 **Position:**
-- X: `1.5` (몸통 오른쪽)
+- X: `0.5` (몸통 앞쪽)
 - Y: `0.5` (바닥에 닿도록 낮춤)
-- Z: `0`
+- Z: `0.75` (몸통 오른쪽)
 
 **Rotation:**
-- X: `0`
+- X: `90` (Isaac Sim의 Rotate X 90도 = Unity의 X축 90도 회전)
 - Y: `0`
-- Z: `90` (Isaac Sim의 Orient Y 90도 = Unity의 Z축 90도 회전)
+- Z: `0`
 
 **Scale:**
-- X: `1`
-- Y: `0.5` (Isaac Sim의 Radius 0.5에 대응)
-- Z: `1`
+- X: `0.75`
+- Y: `0.25` (Isaac Sim의 Height 0.25에 대응)
+- Z: `0.75` (Isaac Sim의 Radius 0.75에 대응)
 
-> 💡 **팁**: Unity의 기본 Cylinder는 Y축을 기준으로 세워져 있으므로, Z축으로 90도 회전해야 Isaac Sim과 같은 방향(옆으로 눕힌 형태)이 됩니다.
+> 💡 **팁**: Unity의 기본 Cylinder는 Y축을 기준으로 세워져 있으므로, X축으로 90도 회전해야 Isaac Sim과 같은 방향(옆으로 눕힌 형태)이 됩니다.
 
-### 6-3. 두 번째 바퀴 생성 (복제)
+### 6-3. 세 개의 바퀴 추가 (복제)
 
-1. Hierarchy에서 **Wheel_Right**을 선택합니다.
+1. Hierarchy에서 **Front_Right**을 선택합니다.
 2. **Ctrl + D** 키를 눌러 복제합니다.
-3. 복제된 오브젝트의 이름을 **"Wheel_Left"**로 변경합니다.
-4. Inspector의 Transform에서 **Position X**를 **`-1.5`**로 변경합니다.
+3. 복제된 오브젝트의 이름을 **"Front_Left"**로 변경합니다.
+4. Inspector의 Transform에서 **Position Z**를 **`-0.75`**로 변경합니다.
 
-> Isaac Sim에서는 복제 후 Translate X를 -1.5로 변경했습니다. Unity도 동일합니다.
+### 6-4. 뒷바퀴 생성
 
-### 4-4. 최종 로봇 구조 확인
+1. **Front_Right**을 선택하고 **Ctrl + D**로 복제합니다.
+2. 이름을 **"Rear_Right"**로 변경합니다.
+3. **Position X**를 **`-0.5`**로 변경합니다 (뒷쪽으로 이동).
+
+4. **Front_Left**을 선택하고 **Ctrl + D**로 복제합니다.
+5. 이름을 **"Rear_Left"**로 변경합니다.
+6. **Position X**를 **`-0.5`**로 변경합니다.
+
+### 6-5. 최종 로봇 구조 확인
 
 Hierarchy 창에 다음과 같은 구조가 보여야 합니다:
 
@@ -238,14 +249,16 @@ RobotScene
 ├── Main Camera
 ├── Directional Light
 ├── Ground
-├── Body           ← 로봇 몸통 (Cube)
-├── Wheel_Right    ← 오른쪽 바퀴 (Cylinder)
-└── Wheel_Left     ← 왼쪽 바퀴 (Cylinder)
+├── Body            ← 로봇 몸통 (Cube)
+├── Front_Right     ← 오른쪽 앞바퀴 (Cylinder)
+├── Front_Left      ← 왼쪽 앞바퀴 (Cylinder)
+├── Rear_Right      ← 오른쪽 뒷바퀴 (Cylinder)
+└── Rear_Left       ← 왼쪽 뒷바퀴 (Cylinder)
 ```
 
 > 💡 **팁**: 모든 로봇 파트를 하나의 빈 오브젝트 아래에 자식으로 넣으면 관리가 편해집니다.
 > - Hierarchy 빈 공간 우클릭 > **Create Empty** > 이름을 **"Robot"**으로 변경
-> - Body, Wheel_Right, Wheel_Left을 모두 선택한 뒤 Robot 오브젝트로 드래그하여 자식으로 만듦
+> - Body, Front_Right, Front_Left, Rear_Right, Rear_Left을 모두 선택한 뒤 Robot 오브젝트로 드래그하여 자식으로 만듦
 
 ---
 
@@ -287,7 +300,9 @@ Inspector에서 Rigidbody 컴포넌트의 값을 확인합니다:
 
 ### 7-3. 바퀴에 Rigidbody 및 Capsule Collider 추가
 
-1. Hierarchy에서 **Wheel_Right**을 선택합니다.
+4개의 바퀴 모두에 물리 효과를 적용합니다.
+
+1. Hierarchy에서 **Front_Right**을 선택합니다.
 2. **Add Component > Rigidbody**를 추가합니다.
 3. **Add Component > Capsule Collider**를 추가합니다.
    - Capsule Collider는 원통에 더 적합합니다.
@@ -297,11 +312,13 @@ Inspector에서 Rigidbody 컴포넌트의 값을 확인합니다:
 | 속성 | 값 | 설명 |
 |------|---|------|
 | Center | (0, 0, 0) | 중심점 (기본값) |
-| Radius | `0.5` | 반지름 |
-| Height | `1` | 높이 |
+| Radius | `0.375` | 반지름 (Isaac Sim의 0.75 스케일에 대응) |
+| Height | `0.25` | 높이 (Isaac Sim의 Height 0.25에 대응) |
 | Direction | **Z-Axis** | 캡슐의 방향을 Z축으로 설정 (옆으로 눕힌 원통에 맞춤) |
 
-4. 같은 방법으로 **Wheel_Left**에도 Rigidbody와 Capsule Collider를 추가합니다.
+4. 같은 방법으로 **Front_Left**, **Rear_Right**, **Rear_Left**에도 Rigidbody와 Capsule Collider를 추가합니다.
+
+> 💡 **팁**: 4개의 바퀴를 모두 선택한 뒤 한꺼번에 Component를 추가할 수도 있습니다.
 
 ### 7-4. Ground에 Collider 추가
 
@@ -429,7 +446,7 @@ RobotMaterial을 선택하고 Inspector에서 다음 값을 설정합니다:
 3. **Material** 필드에 **RobotMaterial**을 드래그하거나 클릭하여 선택합니다.
 
 **바퀴 (Capsule Collider)에 적용:**
-1. **Wheel_Right**과 **Wheel_Left**을 각각 선택합니다.
+1. **Front_Right**, **Front_Left**, **Rear_Right**, **Rear_Left**을 각각 선택합니다.
 2. 각각의 **Capsule Collider**의 **Material** 필드에 **RobotMaterial**을 적용합니다.
 
 ### 9-4. Ground용 별도 Material (선택)
@@ -494,7 +511,7 @@ Isaac Sim에서는 **Create > Material > OmniPBR**을 사용하여 Body와 Wheel
 3. **Materials > Element 0** 필드에 **BodyMaterial**을 드래그하거나 클릭하여 선택합니다.
 
 **바퀴에 적용:**
-1. **Wheel_Right**과 **Wheel_Left**을 선택합니다.
+1. **Front_Right**, **Front_Left**, **Rear_Right**, **Rear_Left**을 선택합니다.
 2. 각각의 Mesh Renderer의 **Element 0**에 **WheelMaterial**을 적용합니다.
 
 **Ground에 적용:**
@@ -527,7 +544,7 @@ Assets/
 
 1. Hierarchy에서 빈 공간을 **우클릭** > **Create Empty**를 클릭합니다.
 2. 이름을 **"Robot"**으로 변경합니다.
-3. **Body**, **Wheel_Right**, **Wheel_Left**을 모두 선택합니다.
+3. **Body**, **Front_Right**, **Front_Left**, **Rear_Right**, **Rear_Left**을 모두 선택합니다.
 4. 선택된 오브젝트들을 **Robot** 오브젝트 위로 **드래그**하여 자식으로 만듭니다.
 
 ### 11-2. RobotController 스크립트 만들기
@@ -769,8 +786,10 @@ RobotScene
 ├── Ground              ← Mesh Collider + GroundMaterial
 ├── Robot               ← Rigidbody(Kinematic) + RobotController
 │   ├── Body            ← Rigidbody + Box Collider + BodyMaterial
-│   ├── Wheel_Right     ← Rigidbody + Capsule Collider + WheelMaterial
-│   └── Wheel_Left      ← Rigidbody + Capsule Collider + WheelMaterial
+│   ├── Front_Right     ← Rigidbody + Capsule Collider + WheelMaterial
+│   ├── Front_Left      ← Rigidbody + Capsule Collider + WheelMaterial
+│   ├── Rear_Right      ← Rigidbody + Capsule Collider + WheelMaterial
+│   └── Rear_Left       ← Rigidbody + Capsule Collider + WheelMaterial
 ```
 
 ### 12-3. 최종 Assets 구조

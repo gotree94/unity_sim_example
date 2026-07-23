@@ -22,11 +22,11 @@
 ### Unreal Engine 튜토리얼
 | 단계 | 파일 | 내용 | 소요 시간 |
 |------|------|------|----------|
-| **1단계** | [UE5 설치 및 기초](UE/01_UE_Installation.md) | UE5 설치, 프로젝트 생성, Python 통합 | 약 60~90분 |
-| **2단계** | [C++ 기반 로봇 시뮬레이션](UE/02_UE_CPP_Robot_Tutorial.md) | C++ 클래스, 컴포넌트, 이동/센서 구현 | 약 90~120분 |
-| **3단계** | [Blueprint 기반 로봇 시뮬레이션](UE/03_UE_Blueprint_Robot_Tutorial.md) | Blueprint 클래스, 비주얼 스크립팅 | 약 60~90분 |
-| **4단계** | [Python TCP/IP 연결](UE/04_UE_Python_Connection.md) | C++ FSocket, JSON 프로토콜 | 약 60~90분 |
-| **5단계** | [Unity AI 대응 UE 기능](UE/05_UE_AI_Integration.md) | Behavior Trees, EQS, ML, MetaSounds | 약 120~180분 |
+| **1단계** | [UE5 설치 및 기초](01_UE_Installation.md) | UE5 설치, 프로젝트 생성, Python 통합 | 약 60~90분 |
+| **2단계** | [C++ 기반 로봇 시뮬레이션](02_UE_CPP_Robot_Tutorial.md) | C++ 클래스, 컴포넌트, 이동/센서 구현 | 약 90~120분 |
+| **3단계** | [Blueprint 기반 로봇 시뮬레이션](03_UE_Blueprint_Robot_Tutorial.md) | Blueprint 클래스, 비주얼 스크립팅 | 약 60~90분 |
+| **4단계** | [Python TCP/IP 연결](04_UE_Python_Connection.md) | C++ FSocket, JSON 프로토콜 | 약 60~90분 |
+| **5단계** | [Unity AI 대응 UE 기능](05_UE_AI_Integration.md) | Behavior Trees, EQS, ML, MetaSounds | 약 120~180분 |
 
 ---
 
@@ -125,14 +125,15 @@
 unity_sim_example/
 ├── README.md                              <- 이 파일 (튜토리얼 인덱스)
 ├── 01_unity_installation.md               <- 1단계: Unity 설치 및 기초
-├── 02_robot_creation.md                   <- 2단계: 로봇 제작
+├── 02_robot_creation.md                   <- 2단계: 로봇 제작 (4바퀴)
 ├── 03_python_connection.md                <- 3단계: Python 연결
 ├── 04_Unity_AI_Development_Tutorial.md    <- 4단계: Unity AI 개발
-├── 01_UE_Installation.md                  <- 1단계: UE5 설치 및 기초
-├── 02_UE_CPP_Robot_Tutorial.md            <- 2단계: C++ 기반 로봇 시뮬레이션
-├── 03_UE_Blueprint_Robot_Tutorial.md      <- 3단계: Blueprint 기반 로봇 시뮬레이션
-├── 04_UE_Python_Connection.md             <- 4단계: Python TCP/IP 연결
-└── 05_UE_AI_Integration.md                <- 5단계: Unity AI 대응 UE 기능
+└── UE/
+    ├── 01_UE_Installation.md              <- 1단계: UE5 설치 및 기초
+    ├── 02_UE_CPP_Robot_Tutorial.md        <- 2단계: C++ 기반 로봇 시뮬레이션
+    ├── 03_UE_Blueprint_Robot_Tutorial.md  <- 3단계: Blueprint 기반 로봇 시뮬레이션
+    ├── 04_UE_Python_Connection.md         <- 4단계: Python TCP/IP 연결
+    └── 05_UE_AI_Integration.md            <- 5단계: Unity AI 대응 UE 기능
 ```
 
 ---
