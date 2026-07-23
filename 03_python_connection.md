@@ -536,7 +536,7 @@ class RobotControlGUI:
         # 메인 윈도우
         self.root = tk.Tk()
         self.root.title("로봇 원격 제어")
-        self.root.geometry("400x500")
+        self.root.geometry("400x550")
         self.root.resizable(False, False)
         
         self.setup_ui()
