@@ -75,10 +75,10 @@ Isaac Sim (Z-up)          Unity (Y-up)
 
 | 파트 | Isaac Sim 설정 | Unity 설정 | 변환 내용 |
 |------|---------------|-----------|----------|
-| **Body (Cube)** | Scale: (2, 1, 0.5) | Scale: (2, 0.5, 1) | X→X, Y→Z, Z→Y축 변환 |
-| **Body 위치** | Translate Z = 0.5 | Position Y = 0.25 | Z→Y축 변환 (높이 절반) |
-| **Wheel (Cylinder)** | Rotate X = 90도 | Rotation X = 90도 | X축 회전 동일 |
-| **Wheel 위치** | Translate: (0.5, 0.75, 0) | Position: (0.5, 0, 0.75) | Y→Z, Z→Y축 변환 |
+| **Body (Cube)** | Scale: (2, 1, 0.5) | Scale: (1, 0.5, 2) | X→Z, Y→Z, Z→Y축 변환 |
+| **Body 위치** | Translate Z = 0.5 | Position Y = 0.5 | Z→Y축 변환 |
+| **Wheel (Cylinder)** | Rotate X = 90도 | Rotation Z = 90도 | X→Z축 변환 |
+| **Wheel 위치** | Translate: (0.75, 0, 0.5) | Position: (0.75, 0.5, 0.5) | Y→Y, Z→Z축 변환 |
 
 #### 높이 축 묶기 (부모-자식 관계)
 
@@ -148,7 +148,117 @@ Ground 색상을 나중에 Material로 변경할 수 있지만, 일단 놔둡니
 
 Isaac Sim 튜토리얼에서는 **Create > Shape > Cube**로 상자를 만들고 Z축 위치와 Scale을 변경했습니다. Unity에서는 다음과 같이 진행합니다.
 
-### 5-1. Cube 생성
+### 5-0. 자동 초기화 스크립트 (선택사항)
+
+로봇 구조를 자동으로 생성하고 초기화하는 스크립트를 사용할 수 있습니다. 수동으로 설정하는 대신 이 스크립트를 사용하면 정확한 값으로 자동 설정됩니다.
+
+#### RobotInitializer 스크립트 만들기
+
+1. Project 창의 **Assets** 폴더에서 우클릭합니다.
+2. **Create > C# Script**를 클릭합니다.
+3. 이름을 **"RobotInitializer"**로 변경합니다.
+4. 스크립트를 **더블클릭**하여 엽니다.
+5. 다음 코드를 입력합니다:
+
+```csharp
+using UnityEngine;
+
+/// <summary>
+/// 로봇 구조를 자동으로 생성하고 초기화하는 스크립트
+/// </summary>
+public class RobotInitializer : MonoBehaviour
+{
+    [Header("로봇 설정")]
+    [Tooltip("로봇을 자동으로 생성할지 여부")]
+    public bool autoCreateRobot = true;
+    
+    [Header("바퀴 설정")]
+    public float wheelRadius = 0.75f;
+    public float wheelHeight = 0.25f;
+    
+    void Awake()
+    {
+        if (autoCreateRobot)
+        {
+            CreateRobot();
+        }
+    }
+    
+    /// <summary>
+    /// 로봇 구조를 자동으로 생성합니다.
+    /// </summary>
+    void CreateRobot()
+    {
+        // 기존 로봇이 있으면 삭제
+        if (transform.Find("Robot") != null)
+        {
+            DestroyImmediate(transform.Find("Robot").gameObject);
+        }
+        
+        // Robot 빈 오브젝트 생성
+        GameObject robot = new GameObject("Robot");
+        robot.transform.SetParent(transform);
+        robot.transform.localPosition = Vector3.zero;
+        
+        // Body 생성
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        body.name = "Body";
+        body.transform.SetParent(robot.transform);
+        body.transform.localPosition = new Vector3(0, 0.5f, 0);
+        body.transform.localRotation = Quaternion.identity;
+        body.transform.localScale = new Vector3(1, 0.5f, 2);
+        
+        // Body 머티리얼 적용
+        Renderer bodyRenderer = body.GetComponent<Renderer>();
+        if (bodyRenderer != null)
+        {
+            bodyRenderer.material.color = new Color(0.2f, 0.4f, 0.8f); // 파란색
+        }
+        
+        // 바퀴 생성
+        CreateWheel(robot.transform, "Front_Right", new Vector3(0.75f, 0.5f, 0.5f));
+        CreateWheel(robot.transform, "Front_Left", new Vector3(0.75f, 0.5f, -0.5f));
+        CreateWheel(robot.transform, "Rear_Right", new Vector3(-0.75f, 0.5f, 0.5f));
+        CreateWheel(robot.transform, "Rear_Left", new Vector3(-0.75f, 0.5f, -0.5f));
+        
+        Debug.Log("로봇이 자동으로 생성되었습니다!");
+    }
+    
+    /// <summary>
+    /// 바퀴를 생성합니다.
+    /// </summary>
+    void CreateWheel(Transform parent, string wheelName, Vector3 position)
+    {
+        GameObject wheel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        wheel.name = wheelName;
+        wheel.transform.SetParent(parent);
+        wheel.transform.localPosition = position;
+        wheel.transform.localRotation = Quaternion.Euler(0, 0, 90);
+        wheel.transform.localScale = new Vector3(wheelRadius, wheelHeight, wheelRadius);
+        
+        // 바퀴 머티리얼 적용
+        Renderer wheelRenderer = wheel.GetComponent<Renderer>();
+        if (wheelRenderer != null)
+        {
+            wheelRenderer.material.color = new Color(0.1f, 0.1f, 0.1f); // 검은색
+        }
+    }
+}
+```
+
+6. 저장하고 Unity로 돌아옵니다.
+
+#### 사용 방법
+
+1. Hierarchy에서 빈 공간을 **우클릭** > **Create Empty**를 클릭합니다.
+2. 이름을 **"RobotManager"**로 변경합니다.
+3. **RobotManager**를 선택하고 **Add Component > RobotInitializer**를 추가합니다.
+4. Inspector에서 **Auto Create Robot** 체크박스를 활성화합니다.
+5. **▶ (Play)** 버튼을 클릭하면 로봇이 자동으로 생성됩니다.
+
+> 💡 **팁**: 이 스크립트는 Play 모드에서만 작동합니다. 에디터에서 미리보기를 원하면 `[ExecuteInEditMode]` 속성을 클래스에 추가하세요.
+
+### 5-1. 수동으로 Cube 생성 (스크립트를 사용하지 않는 경우)
 
 1. Hierarchy 창의 빈 공간을 **우클릭**합니다.
 2. **3D Object > Cube**를 클릭합니다.
@@ -161,24 +271,24 @@ Isaac Sim 튜토리얼에서는 **Create > Shape > Cube**로 상자를 만들고
 
 | 속성 | Isaac Sim 값 | Unity 대응 | Unity 값 |
 |------|-------------|-----------|---------|
-| Position | (0, 0, 0.5) | Position Y (Unity에서는 Y축이 위) | **(0, 0.25, 0)** |
-| Scale | (2, 1, 0.5) | Scale (X→X, Y→Z, Z→Y) | **(2, 0.5, 1)** |
+| Position | (0, 0, 0.5) | Position Y (Unity에서는 Y축이 위) | **(0, 0.5, 0)** |
+| Scale | (2, 1, 0.5) | Scale (X→Z, Z→Y) | **(1, 0.5, 2)** |
 
 > ⚠️ **중요 차이점**: Isaac Sim에서는 Z축이 위쪽이지만, Unity에서는 **Y축이 위쪽**입니다. 
 > - Isaac Sim의 Scale (2, 1, 0.5) = 길이 2, 너비 1, 높이 0.5
-> - Unity의 Scale (2, 0.5, 1) = 길이 2, 높이 0.5, 너비 1
+> - Unity의 Scale (1, 0.5, 2) = 너비 1, 높이 0.5, 길이 2
 
 #### 상세 설정 방법
 
 **Position:**
 - X: `0`
-- Y: `0.25` (지면에 닿도록 설정: 높이 0.5의 절반)
+- Y: `0.5` (지면 위에 떠 있도록 설정)
 - Z: `0`
 
 **Scale:**
-- X: `2` (길이 - 앞뒤 방향)
+- X: `1` (너비 - 좌우 방향)
 - Y: `0.5` (높이 - 위아래 방향)
-- Z: `1` (너비 - 좌우 방향)
+- Z: `2` (길이 - 앞뒤 방향)
 
 ### 5-3. 결과 확인
 
@@ -204,44 +314,44 @@ Isaac Sim에서는 **Create > Shape > Cylinder**를 사용했습니다. Unity에
 Isaac Sim에서는:
 - Scale: (0.75, 0.75, 0.25)
 - Rotate X: 90도
-- Translate: (0.5, 0.75, 0)
+- Translate: (0.75, 0, 0.5)
 
 Unity에서는 다음과 같이 설정합니다:
 
 **Position:**
-- X: `0.5` (몸통 앞쪽)
-- Y: `0.5` (바닥에 닿도록 설정: 바퀴 높이의 절반)
-- Z: `0.75` (몸통 오른쪽)
+- X: `0.75` (몸통 앞쪽)
+- Y: `0.5` (지면 위에 떠 있도록 설정)
+- Z: `0.5` (몸통 오른쪽)
 
 **Rotation:**
-- X: `90` (Isaac Sim의 Rotate X 90도 = Unity의 X축 90도 회전)
+- X: `0`
 - Y: `0`
-- Z: `0`
+- Z: `90` (Z축으로 90도 회전 - 옆으로 눕히기)
 
 **Scale:**
 - X: `0.75` (반지름)
-- Y: `0.25` (Isaac Sim의 Height 0.25에 대응)
+- Y: `0.25` (높이)
 - Z: `0.75` (반지름)
 
-> 💡 **팁**: Unity의 기본 Cylinder는 Y축을 기준으로 세워져 있으므로, X축으로 90도 회전해야 Isaac Sim과 같은 방향(옆으로 눕힌 형태)이 됩니다.
-> 바퀴의 Y 위치는 0.5로 설정하여 지면에 닿도록 합니다 (바퀴 높이 0.25의 절반).
+> 💡 **팁**: Unity의 기본 Cylinder는 Y축을 기준으로 세워져 있으므로, Z축으로 90도 회전해야 Isaac Sim과 같은 방향(옆으로 눕힌 형태)이 됩니다.
+> 바퀴의 Y 위치는 0.5로 설정하여 몸통과 같은 높이에 있도록 합니다.
 
 ### 6-3. 세 개의 바퀴 추가 (복제)
 
 1. Hierarchy에서 **Front_Right**을 선택합니다.
 2. **Ctrl + D** 키를 눌러 복제합니다.
 3. 복제된 오브젝트의 이름을 **"Front_Left"**로 변경합니다.
-4. Inspector의 Transform에서 **Position Z**를 **`-0.75`**로 변경합니다.
+4. Inspector의 Transform에서 **Position Z**를 **`-0.5`**로 변경합니다.
 
 ### 6-4. 뒷바퀴 생성
 
 1. **Front_Right**을 선택하고 **Ctrl + D**로 복제합니다.
 2. 이름을 **"Rear_Right"**로 변경합니다.
-3. **Position X**를 **`-0.5`**로 변경합니다 (뒷쪽으로 이동).
+3. **Position X**를 **`-0.75`**로 변경합니다 (뒷쪽으로 이동).
 
 4. **Front_Left**을 선택하고 **Ctrl + D**로 복제합니다.
 5. 이름을 **"Rear_Left"**로 변경합니다.
-6. **Position X**를 **`-0.5`**로 변경합니다.
+6. **Position X**를 **`-0.75`**로 변경합니다.
 
 ### 6-5. 최종 로봇 구조 확인
 
@@ -265,63 +375,32 @@ RobotScene
 
 ---
 
-## 7. 물리 효과 적용 (Rigidbody 및 Collider)
+## 7. 물리 효과 적용 (선택사항)
 
-이제 Isaac Sim에서 했던 것처럼 물리 효과를 적용합니다. 시뮬레이션을 돌리면 객체가 중력에 의해 떨어지도록 만들어야 합니다.
+이번 단계에서는 로봇의 시각적 구조만 만듭니다. 물리 효과는 나중에 필요할 때 추가할 수 있습니다.
 
-### 7-1. Unity의 물리 시스템 이해하기
+> 💡 **팁**: Isaac Sim에서는 "Rigid Body with Colliders Preset"을 적용했지만, Unity에서는 먼저 시각적 구조를 완성한 뒤, 필요할 때 물리 효과를 추가하는 것이 좋습니다.
 
-Unity의 물리 시스템은 두 가지 핵심 컴포넌트로 구성됩니다:
+### 7-1. 현재 상태 확인
 
-| 컴포넌트 | 역할 |
-|---------|------|
-| **Rigidbody** | 물리 엔진에 의해 움직이는 오브젝트에 추가. 중력, 힘, 질량 등을 다룸 |
-| **Collider** | 충돌 감지용 형태. 오브젝트가 서로 통과하지 못하게 함 |
+지금까지 만든 로봇 구조:
 
-> Isaac Sim의 "Rigid Body with Colliders Preset" = Unity의 **Rigidbody + Collider** 조합
+```
+Robot (빈 오브젝트, 부모)
+├── Body            ← Cube (시각적 몸통)
+├── Front_Right     ← Cylinder (오른쪽 앞바퀴)
+├── Front_Left      ← Cylinder (왼쪽 앞바퀴)
+├── Rear_Right      ← Cylinder (오른쪽 뒷바퀴)
+└── Rear_Left       ← Cylinder (왼쪽 뒷바퀴)
+```
 
-### 7-2. Body에 Rigidbody 및 Box Collider 추가
+### 7-2. 시뮬레이션 테스트 (물리 없이)
 
-1. Hierarchy에서 **Body**를 선택합니다.
-2. Inspector 창 하단의 **"Add Component"** 버튼을 클릭합니다.
-3. **Rigidbody**를 검색하여 선택합니다.
-4. 다시 **Add Component**를 클릭합니다.
-5. **Box Collider**를 검색하여 선택합니다.
-   - Unity의 Cube에는 기본적으로 Box Collider가 자동으로 추가되어 있을 수 있습니다.
+1. Unity 상단의 **▶ (Play)** 버튼을 클릭합니다.
+2. 로봇이 제자리에 있는 것을 확인합니다 (중력 없음).
+3. **▶ (Play)** 버튼을 다시 클릭하여 정지합니다.
 
-#### Rigidbody 설정값
-
-Inspector에서 Rigidbody 컴포넌트의 값을 확인합니다:
-
-| 속성 | 값 | 설명 |
-|------|---|------|
-| Mass | `1` | 질량 (기본값, 필요시 조정) |
-| Drag | `0` | 공기 저항 (0 = 없음) |
-| Angular Drag | `0.05` | 회전 저항 |
-| Use Gravity | ✅ 체크 | 중력 적용 |
-| Is Kinematic | ❌ 체크 해제 | 물리 엔진에 의해 움직임 |
-
-### 7-3. 바퀴에 Rigidbody 및 Capsule Collider 추가
-
-4개의 바퀴 모두에 물리 효과를 적용합니다.
-
-1. Hierarchy에서 **Front_Right**을 선택합니다.
-2. **Add Component > Rigidbody**를 추가합니다.
-3. **Add Component > Capsule Collider**를 추가합니다.
-   - Capsule Collider는 원통에 더 적합합니다.
-
-#### Capsule Collider 설정
-
-| 속성 | 값 | 설명 |
-|------|---|------|
-| Center | (0, 0, 0) | 중심점 (기본값) |
-| Radius | `0.375` | 반지름 (Isaac Sim의 0.75 스케일에 대응) |
-| Height | `0.25` | 높이 (Isaac Sim의 Height 0.25에 대응) |
-| Direction | **Z-Axis** | 캡슐의 방향을 Z축으로 설정 (옆으로 눕힌 원통에 맞춤) |
-
-4. 같은 방법으로 **Front_Left**, **Rear_Right**, **Rear_Left**에도 Rigidbody와 Capsule Collider를 추가합니다.
-
-> 💡 **팁**: 4개의 바퀴를 모두 선택한 뒤 한꺼번에 Component를 추가할 수도 있습니다.
+> 💡 **참고**: 물리 효과를 추가하려면 나중에 Section 7-3부터 진행하면 됩니다. 지금은 시각적 구조만 완성합니다.
 
 ### 7-4. Ground에 Collider 추가
 
@@ -766,9 +845,233 @@ Robot 부모 오브젝트에도 Rigidbody가 있어야 합니다.
 
 ---
 
-## 12. 최종 테스트 및 정리
+## 12. 카메라가 로봇을 따라가도록 설정 (선택사항)
 
-### 12-1. 전체 기능 테스트 체크리스트
+로봇을 이동하면 카메라 시야에서 벗어나 보이지 않는 문제가 있을 수 있습니다. 이 문제를 해결하려면 카메라가 로봇을 따라가도록 설정합니다.
+
+### 12-1. CameraFollow 스크립트 만들기
+
+1. Project 창의 **Assets** 폴더에서 우클릭합니다.
+2. **Create > C# Script**를 클릭합니다.
+3. 이름을 **"CameraFollow"**로 변경합니다.
+4. 스크립트를 **더블클릭**하여 엽니다.
+5. 다음 코드를 입력합니다:
+
+```csharp
+using UnityEngine;
+
+/// <summary>
+/// 카메라가 대상을 따라가도록 하는 스크립트
+/// </summary>
+public class CameraFollow : MonoBehaviour
+{
+    [Header("추적 대상")]
+    [Tooltip("카메라가 따라갈 대상 (로봇)")]
+    public Transform target;
+    
+    [Header("카메라 설정")]
+    [Tooltip("대상과의 거리")]
+    public float distance = 5.0f;
+    
+    [Tooltip("카메라 높이")]
+    public float height = 3.0f;
+    
+    [Tooltip("부드러운 따라가기 속도")]
+    public float smoothSpeed = 5.0f;
+    
+    [Tooltip("카메라가 대상을 바라보는 오프셋")]
+    public Vector3 offset = new Vector3(0, 2, 0);
+    
+    void LateUpdate()
+    {
+        if (target == null)
+        {
+            // 태그로 로봇 찾기
+            GameObject robot = GameObject.FindWithTag("Robot");
+            if (robot != null)
+            {
+                target = robot.transform;
+            }
+            return;
+        }
+        
+        // 목표 위치 계산
+        Vector3 targetPosition = target.position - target.forward * distance + Vector3.up * height;
+        
+        // 부드럽게 이동
+        transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * smoothSpeed);
+        
+        // 대상을 바라보도록 회전
+        Vector3 lookAtPosition = target.position + offset;
+        transform.LookAt(lookAtPosition);
+    }
+}
+```
+
+6. 저장하고 Unity로 돌아옵니다.
+
+### 12-2. 카메라에 스크립트 적용
+
+1. Hierarchy에서 **Main Camera**를 선택합니다.
+2. Inspector 하단의 **"Add Component"** 버튼을 클릭합니다.
+3. **CameraFollow**를 검색하여 선택합니다.
+4. Inspector에서 **Target** 필드에 **Robot** 오브젝트를 드래그하거나 빈 필드를 클릭하여 선택합니다.
+
+### 12-3. 카메라 위치 설정
+
+1. **Main Camera**의 Transform 값을 설정합니다:
+
+| 속성 | 값 |
+|------|---|
+| Position | (0, 5, -10) |
+| Rotation | (20, 0, 0) |
+
+> 💡 **팁**: 카메라 위치는 로봇 뒤쪽 위에서 바라보도록 설정합니다.
+> - Y: 5 (높이)
+> - Z: -10 (뒤쪽)
+> - Rotation X: 20도 (아래를 바라보도록)
+
+### 12-4. 대안: Cinemachine 사용 (추천)
+
+더 전문적인 카메라 시스템이 필요하다면 Unity의 **Cinemachine** 패키지를 사용할 수 있습니다.
+
+#### Cinemachine 설치
+
+1. Unity 상단 메뉴에서 **Window > Package Manager**를 클릭합니다.
+2. 좌측 상단의 **Unity Registry**를 선택합니다.
+3. 검색창에 **"Cinemachine"**을 입력합니다.
+4. **Install** 버튼을 클릭합니다.
+
+#### Cinemachine Virtual Camera 설정
+
+1. Hierarchy에서 빈 공간을 **우클릭** > **Create Empty**를 클릭합니다.
+2. 이름을 **"VirtualCamera"**로 변경합니다.
+3. **Add Component > CinemachineVirtualCamera**를 추가합니다.
+4. Inspector에서 설정합니다:
+
+| 속성 | 값 |
+|------|---|
+| Follow | Robot 오브젝트 |
+| Look At | Robot 오브젝트 |
+| Body | Framing Transposer |
+| Aim | Composer |
+
+5. **Framing Transposer** 설정:
+
+| 속성 | 값 |
+|------|---|
+| Follow Offset | (0, 3, -8) |
+| Damping | (0.5, 0.5, 0.5) |
+
+> 💡 **팁**: Cinemachine은 자동으로 로봇을 따라가고 부드러운 카메라 움직임을 제공합니다.
+
+---
+
+## 13. 물리 시스템 설정 (중요)
+
+로봇이 제대로 떨어지고 지면 위에 서려면 물리 시스템을 올바르게 설정해야 합니다.
+
+### 13-1. 로봇에 Rigidbody 추가
+
+**방법 1: 간단한 설정 (추천)**
+
+Robot 빈 오브젝트에 Rigidbody를 추가합니다:
+
+1. Hierarchy에서 **Robot** 오브젝트를 선택합니다.
+2. **Add Component > Rigidbody**를 추가합니다.
+3. Rigidbody 설정값:
+
+| 속성 | 값 | 설명 |
+|------|---|------|
+| Mass | `1` | 질량 |
+| Drag | `0` | 공기 저항 |
+| Angular Drag | `0.05` | 회전 저항 |
+| Use Gravity | ✅ 체크 | 중력 적용 |
+| Is Kinematic | ❌ 체크 해제 | 물리 엔진에 의해 움직임 |
+
+**방법 2: 개별 파트별 설정**
+
+각 파트에 개별적으로 Rigidbody를 추가합니다:
+
+1. **Body**에 Rigidbody 추가:
+   - Mass: `5` (몸통은 더 무겁게)
+   - Use Gravity: ✅
+   - Is Kinematic: ❌
+
+2. **각 바퀴**에 Rigidbody 추가:
+   - Mass: `1`
+   - Use Gravity: ✅
+   - Is Kinematic: ❌
+
+### 13-2. Collider 추가
+
+각 파트에 충돌체를 추가합니다:
+
+**Body에 Box Collider:**
+1. **Body**를 선택합니다.
+2. **Add Component > Box Collider**를 추가합니다.
+3. 설정값:
+
+| 속성 | 값 |
+|------|---|
+| Center | (0, 0, 0) |
+| Size | (1, 0.5, 2) (Scale과 동일) |
+
+**각 바퀴에 Capsule Collider:**
+1. **Front_Right**를 선택합니다.
+2. **Add Component > Capsule Collider**를 추가합니다.
+3. 설정값:
+
+| 속성 | 값 | 설명 |
+|------|---|------|
+| Center | (0, 0, 0) | 중심점 |
+| Radius | `0.375` | 반지름 (Scale X의 절반) |
+| Height | `0.25` | 높이 (Scale Y) |
+| Direction | **Z-Axis** | 옆으로 눕힌 원통에 맞춤 |
+
+4. 나머지 바퀴(**Front_Left**, **Rear_Right**, **Rear_Left**)에도 같은 설정 적용
+
+### 13-3. Ground에 Collider 확인
+
+1. Hierarchy에서 **Ground**를 선택합니다.
+2. **Mesh Collider**가 있는지 확인합니다.
+3. Rigidbody는 **추가하지 않습니다** (바닥은 움직이면 안 됨).
+
+> ⚠️ **중요**: Ground에 Collider가 없으면 로봇이 바닥을 뚫고 지나갑니다!
+
+### 13-4. 부모-자식 관계 설정
+
+물리 시스템이 제대로 작동하려면 부모-자식 관계가 중요합니다:
+
+```
+Robot (빈 오브젝트) ← Rigidbody 추가
+├── Body            ← Box Collider
+├── Front_Right     ← Capsule Collider
+├── Front_Left      ← Capsule Collider
+├── Rear_Right      ← Capsule Collider
+└── Rear_Left       ← Capsule Collider
+```
+
+> 💡 **팁**: Robot에는 Rigidbody만 추가하고, 각 파트에는 Collider만 추가합니다.
+> 이렇게 하면 로봇 전체가 하나의 물리 객체로 움직입니다.
+
+### 13-5. 시뮬레이션 테스트
+
+1. Unity 상단의 **▶ (Play)** 버튼을 클릭합니다.
+2. 로봇이 중력에 의해 지면으로 떨어지는 것을 확인합니다.
+3. 로봇이 지면 위에 올바르게 서 있는지 확인합니다.
+
+> ⚠️ **문제 해결**: 로봇이 떨어지지 않으면:
+> - Robot에 Rigidbody가 있는지 확인
+> - Use Gravity가 체크되어 있는지 확인
+> - Ground에 Collider가 있는지 확인
+> - 로봇의 Y 위치가 0보다 큰지 확인 (지면 위에 있는지)
+
+---
+
+## 14. 최종 테스트 및 정리
+
+### 14-1. 전체 기능 테스트 체크리스트
 
 Play 모드에서 다음 항목을 모두 확인합니다:
 
@@ -782,22 +1085,22 @@ Play 모드에서 다음 항목을 모두 확인합니다:
 - [ ] 로봇이 지면을 뚫고 지나가지 않는지
 - [ ] 로봇의 색상이 올바르게 표시되는지
 
-### 12-2. 최종 씬 구조
+### 14-2. 최종 씬 구조
 
 ```
 RobotScene
 ├── Main Camera
 ├── Directional Light
 ├── Ground              ← Mesh Collider + GroundMaterial
-├── Robot               ← Rigidbody(Kinematic) + RobotController
-│   ├── Body            ← Rigidbody + Box Collider + BodyMaterial
-│   ├── Front_Right     ← Rigidbody + Capsule Collider + WheelMaterial
-│   ├── Front_Left      ← Rigidbody + Capsule Collider + WheelMaterial
-│   ├── Rear_Right      ← Rigidbody + Capsule Collider + WheelMaterial
-│   └── Rear_Left       ← Rigidbody + Capsule Collider + WheelMaterial
+├── Robot               ← RobotController
+│   ├── Body            ← Cube + BodyMaterial
+│   ├── Front_Right     ← Cylinder + WheelMaterial
+│   ├── Front_Left      ← Cylinder + WheelMaterial
+│   ├── Rear_Right      ← Cylinder + WheelMaterial
+│   └── Rear_Left       ← Cylinder + WheelMaterial
 ```
 
-### 12-3. 최종 Assets 구조
+### 14-3. 최종 Assets 구조
 
 ```
 Assets/

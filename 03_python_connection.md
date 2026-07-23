@@ -461,7 +461,7 @@ public class RobotController : MonoBehaviour
 RobotScene
 ├── ...
 ├── NetworkManager    <- TCPServer (포트: 5000)
-└── Robot             <- RobotController + Rigidbody
+└── Robot             <- RobotController
     ├── Body
     ├── Front_Right
     ├── Front_Left
