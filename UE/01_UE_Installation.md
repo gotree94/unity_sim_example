@@ -8,7 +8,7 @@
 
 ### UE 5.8 설치
 1. Epic Games Launcher → Unreal Engine 탭 → 라이브러리
-2. "エンジンの追加" 클릭 → **5.8** 버전 선택
+2. 엔진 추가 클릭 → **5.8** 버전 선택
 3. 설치 옵션:
    - **Core Components**: 필수
    - ** starter Content**: 선택 (기본 예제 포함)
