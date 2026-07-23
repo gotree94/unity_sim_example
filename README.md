@@ -7,6 +7,8 @@
 > **UE 버전**: Unreal Engine 5.8 (2024년 ~ )  
 > **목표**: NVIDIA Isaac Sim 튜토리얼 2.2 "Add Simple Objects"를 Unity와 Unreal Engine에서 구현하고, 외부 Python 프로그램에서 키보드 입력으로 로봇을 원격 제어하는 기능까지 구현
 
+https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-sim/latest/building-your-first-robot-in-isaac-sim/01-building-a-simple-robot.html
+
 ---
 
 ## 튜토리얼 구성
