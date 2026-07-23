@@ -448,20 +448,49 @@ public class RobotController : MonoBehaviour
 1. Unity로 돌아옵니다.
 2. Hierarchy에서 **Robot** 오브젝트를 선택합니다.
 3. Inspector에서 **RobotController** 컴포넌트를 찾습니다.
-4. **Tcp Server** 필드에 TCPServer가 있는 오브젝트를 드래그합니다.
-   - TCPServer를 같은 Robot 오브젝트에 붙였다면, Robot을 드래그하면 됩니다.
+4. **Tcp Server** 필드가 **"None (TCPServer)"**로 표시되는 것을 확인합니다.
 
-**TCPServer 오브젝트 추가:**
+**이제 Tcp Server 필드에 TCPServer가 있는 오브젝트를 드래그합니다:**
+
+| TCPServer 위치 | 드래그할 오브젝트 |
+|---------------|-----------------|
+| Robot 오브젝트에 붙인 경우 | **Robot** 오브젝트를 드래그 |
+| NetworkManager에 붙인 경우 | **NetworkManager** 오브젝트를 드래그 |
+
+> 💡 **팁**: TCPServer가 있는 오브젝트를_hierarchy에서 드래그하여 Tcp Server 필드 위에 놓으면 됩니다.
+
+**TCPServer 오브젝트 추가 (아직 없는 경우):**
 1. Hierarchy에서 빈 공간 우클릭 > **Create Empty** > 이름을 **"NetworkManager"**로 변경
 2. NetworkManager를 선택하고 **Add Component > TCPServer** 추가
 3. Inspector에서 **Port** 값을 `5000`으로 설정
+4. **Robot** 오브젝트를 선택하고 Inspector의 **Tcp Server** 필드에 **NetworkManager**를 드래그합니다.
+
+**Inspector 설정 예시:**
+
+Robot 오브젝트를 선택하면 Inspector에 다음과 같이 표시됩니다:
+
+```
+Robot
+├── Transform
+├── Rigidbody
+└── Robot Controller (Script)
+    ├── Move Speed:      5
+    ├── Rotation Speed:  120
+    ├── Jump Force:      7
+    └── Tcp Server:      [NetworkManager]  ← 여기에 NetworkManager를 드래그
+```
+
+드래그 방법:
+1. Hierarchy에서 **NetworkManager**를 마우스로 누른 채로
+2. Robot 오브젝트의 Inspector에서 **Tcp Server** 필드 위로 가져갑니다
+3. 마우스 놓기 (드래그 앤 드롭)
 
 최종 구조:
 ```
 RobotScene
 ├── ...
 ├── NetworkManager    <- TCPServer (포트: 5000)
-└── Robot             <- RobotController
+└── Robot             <- RobotController (Tcp Server 필드에 NetworkManager 연결)
     ├── Body
     ├── Front_Right
     ├── Front_Left
