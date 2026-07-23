@@ -445,25 +445,25 @@ public class RobotController : MonoBehaviour
 
 #### 4) Unity에서 설정하기
 
-1. Unity로 돌아옵니다.
-2. Hierarchy에서 **Robot** 오브젝트를 선택합니다.
-3. Inspector에서 **RobotController** 컴포넌트를 찾습니다.
-4. **Tcp Server** 필드가 **"None (TCPServer)"**로 표시되는 것을 확인합니다.
+**먼저 TCPServer 오브젝트를 만듭니다:**
 
-**이제 Tcp Server 필드에 TCPServer가 있는 오브젝트를 드래그합니다:**
-
-| TCPServer 위치 | 드래그할 오브젝트 |
-|---------------|-----------------|
-| Robot 오브젝트에 붙인 경우 | **Robot** 오브젝트를 드래그 |
-| NetworkManager에 붙인 경우 | **NetworkManager** 오브젝트를 드래그 |
-
-> 💡 **팁**: TCPServer가 있는 오브젝트를_hierarchy에서 드래그하여 Tcp Server 필드 위에 놓으면 됩니다.
-
-**TCPServer 오브젝트 추가 (아직 없는 경우):**
 1. Hierarchy에서 빈 공간 우클릭 > **Create Empty** > 이름을 **"NetworkManager"**로 변경
 2. NetworkManager를 선택하고 **Add Component > TCPServer** 추가
 3. Inspector에서 **Port** 값을 `5000`으로 설정
-4. **Robot** 오브젝트를 선택하고 Inspector의 **Tcp Server** 필드에 **NetworkManager**를 드래그합니다.
+
+**이제 RobotController에 TCPServer를 연결합니다:**
+
+1. Hierarchy에서 **Robot** 오브젝트를 선택합니다.
+2. Inspector에서 **RobotController** 컴포넌트를 찾습니다.
+3. **Tcp Server** 필드가 **"None (TCPServer)"**로 표시되는 것을 확인합니다.
+4. **Tcp Server** 필드에 **NetworkManager**를 드래그합니다.
+
+| TCPServer 위치 | 드래그할 오브젝트 |
+|---------------|-----------------|
+| NetworkManager에 붙인 경우 (기본) | **NetworkManager** 오브젝트를 드래그 |
+| Robot 오브젝트에 붙인 경우 | **Robot** 오브젝트를 드래그 |
+
+> 💡 **팁**: TCPServer가 있는 오브젝트를_hierarchy에서 드래그하여 Tcp Server 필드 위에 놓으면 됩니다.
 
 **Inspector 설정 예시:**
 
@@ -512,163 +512,181 @@ python3 --version
 
 Python이 설치되어 있지 않다면 https://www.python.org 에서 다운로드하여 설치합니다.
 
-#### 2) 필요한 라이브러리 설치
+> 💡 **팁**: Python을 설치하면 `tkinter` 라이브러리가 자동으로 포함됩니다. 별도 설치가 필요 없습니다.
 
-터미널(명령 프롬프트)에서 다음 명령을 실행합니다:
-
-```bash
-pip install keyboard
-```
-
-> ⚠️ **주의**: `keyboard` 라이브러리는 관리자 권한이 필요할 수 있습니다.  
-> Windows에서는 명령 프롬프트를 **관리자 권한으로 실행**해야 할 수 있습니다.  
-> 또는 `pynput` 라이브러리를 대신 사용할 수도 있습니다:
-> ```bash
-> pip install pynput
-> ```
-
-#### 3) 기본 TCP 클라이언트 스크립트
+#### 2) GUI 방식 TCP 클라이언트 스크립트
 
 텍스트 편집기(VS Code, 메모장 등)에서 새 파일을 만들고 **`robot_control.py`**로 저장합니다:
 
 ```python
 import socket
-import time
-import sys
+import tkinter as tk
+from tkinter import ttk
+import threading
 
 # ===== 설정 =====
 HOST = "127.0.0.1"  # Unity가 실행 중인 컴퓨터 (로컬)
 PORT = 5000          # Unity TCPServer의 포트 번호와 일치해야 함
 
-def connect_to_unity():
-    """Unity 서버에 연결합니다."""
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    try:
-        client.connect((HOST, PORT))
-        print(f"[연결 성공] Unity 서버에 연결되었습니다! ({HOST}:{PORT})")
-        return client
-    except ConnectionRefusedError:
-        print("[연결 실패] Unity 서버가 실행 중인지 확인하세요!")
-        print("  -> Unity에서 Play 버튼을 누르세요.")
-        return None
-    except Exception as e:
-        print(f"[연결 실패] 오류: {e}")
-        return None
-
-def send_command(client, command):
-    """Unity에 명령을 전송합니다."""
-    try:
-        message = command.encode("utf-8")
-        client.sendall(message)
-        print(f"  -> 전송: {command}")
-    except BrokenPipeError:
-        print("[오류] 연결이 끊어졌습니다!")
-        return False
-    except Exception as e:
-        print(f"[전송 오류] {e}")
-        return False
-    return True
-
-def print_controls():
-    """조작법 안내를 출력합니다."""
-    print("=" * 50)
-    print("       로봇 원격 제어 프로그램")
-    print("=" * 50)
-    print()
-    print("  조작법:")
-    print("    W 또는 ↑  : 전진")
-    print("    S 또는 ↓  : 후진")
-    print("    A 또는 ←  : 좌회전")
-    print("    D 또는 →  : 우회전")
-    print("    X         : 후진")
-    print("    SPACE     : 정지")
-    print("    Q         : 프로그램 종료")
-    print()
-    print("=" * 50)
-
-def main():
-    print_controls()
-    
-    # Unity 연결
-    print("\n[연결 중] Unity 서버에 연결을 시도합니다...")
-    client = connect_to_unity()
-    
-    if client is None:
-        print("\n프로그램을 종료합니다.")
-        sys.exit(1)
-    
-    print("\n[준비 완료] 키보드를 눌러 로봇을 제어하세요!\n")
-    
-    try:
-        # 간단한 키 입력 방식 (keyboard 라이브러리 사용)
-        import keyboard
+class RobotControlGUI:
+    def __init__(self):
+        self.client = None
+        self.connected = False
         
-        last_key = None
+        # 메인 윈도우
+        self.root = tk.Tk()
+        self.root.title("로봇 원격 제어")
+        self.root.geometry("400x500")
+        self.root.resizable(False, False)
         
-        def on_key_event(event):
-            nonlocal last_key
-            if event.event_type == keyboard.KEY_DOWN:
-                last_key = event.name.upper()
+        self.setup_ui()
+        self.connect_to_unity()
         
-        # 키 이벤트 등록
-        keyboard.hook(on_key_event)
+    def setup_ui(self):
+        """GUI 레이아웃 설정"""
+        # 제목
+        title_label = tk.Label(self.root, text="로봇 원격 제어", font=("Arial", 20, "bold"))
+        title_label.pack(pady=10)
         
-        while True:
-            if last_key is not None:
-                key = last_key
-                last_key = None
-                
-                # 명령 매핑
-                command_map = {
-                    "W": "W\n",
-                    "UP": "W\n",
-                    "S": "S\n",
-                    "DOWN": "S\n",
-                    "A": "A\n",
-                    "LEFT": "A\n",
-                    "D": "D\n",
-                    "RIGHT": "D\n",
-                    "X": "X\n",
-                    "SPACE": "SPACE\n",
-                    "Q": None,
-                }
-                
-                if key == "Q":
-                    print("\n[종료] 프로그램을 종료합니다.")
-                    # 정지 명령 전송
-                    send_command(client, "STOP\n")
-                    break
-                
-                if key in command_map and command_map[key] is not None:
-                    send_command(client, command_map[key])
-            
-            time.sleep(0.01)  # CPU 사용량 줄이기
+        # 연결 상태
+        self.status_frame = tk.Frame(self.root)
+        self.status_frame.pack(pady=5)
+        
+        tk.Label(self.status_frame, text="연결 상태:", font=("Arial", 12))
+        self.status_label = tk.Label(self.status_frame, text="연결 안됨", 
+                                     fg="red", font=("Arial", 12, "bold"))
+        self.status_label.pack(side=tk.LEFT, padx=10)
+        
+        # 구분선
+        ttk.Separator(self.root, orient='horizontal').pack(fill=tk.X, padx=20, pady=10)
+        
+        # 조작 버튼 프레임
+        button_frame = tk.Frame(self.root)
+        button_frame.pack(pady=20)
+        
+        # 윗줄 (전진)
+        self.btn_forward = tk.Button(button_frame, text="▲ 전진 (W)", 
+                                     width=15, height=2,
+                                     command=lambda: self.send_command("W"))
+        self.btn_forward.grid(row=0, column=1, padx=5, pady=5)
+        
+        # 가운데 줄 (좌회전, 정지, 우회전)
+        self.btn_left = tk.Button(button_frame, text="◀ 좌회전 (A)", 
+                                  width=15, height=2,
+                                  command=lambda: self.send_command("A"))
+        self.btn_left.grid(row=1, column=0, padx=5, pady=5)
+        
+        self.btn_stop = tk.Button(button_frame, text="■ 정지 (SPACE)", 
+                                  width=15, height=2, bg="red", fg="white",
+                                  command=lambda: self.send_command("SPACE"))
+        self.btn_stop.grid(row=1, column=1, padx=5, pady=5)
+        
+        self.btn_right = tk.Button(button_frame, text="우회전 ▶ (D)", 
+                                   width=15, height=2,
+                                   command=lambda: self.send_command("D"))
+        self.btn_right.grid(row=1, column=2, padx=5, pady=5)
+        
+        # 아랫줄 (후진)
+        self.btn_backward = tk.Button(button_frame, text="▼ 후진 (S)", 
+                                      width=15, height=2,
+                                      command=lambda: self.send_command("S"))
+        self.btn_backward.grid(row=2, column=1, padx=5, pady=5)
+        
+        # 구분선
+        ttk.Separator(self.root, orient='horizontal').pack(fill=tk.X, padx=20, pady=10)
+        
+        # 로그 영역
+        log_label = tk.Label(self.root, text="통신 로그:", font=("Arial", 10))
+        log_label.pack(anchor=tk.W, padx=20)
+        
+        self.log_text = tk.Text(self.root, height=8, width=45, state=tk.DISABLED)
+        self.log_text.pack(padx=20, pady=5)
+        
+        # 하단 버튼
+        bottom_frame = tk.Frame(self.root)
+        bottom_frame.pack(pady=10)
+        
+        self.btn_reconnect = tk.Button(bottom_frame, text="재연결", 
+                                       command=self.reconnect)
+        self.btn_reconnect.pack(side=tk.LEFT, padx=5)
+        
+        self.btn_quit = tk.Button(bottom_frame, text="종료", 
+                                  command=self.quit_app, bg="gray", fg="white")
+        self.btn_quit.pack(side=tk.LEFT, padx=5)
     
-    except ImportError:
-        print("[대체 모드] keyboard 라이브러리 없이 실행합니다.")
-        print("  명령을 직접 입력하세요 (W/S/A/D/X/SPACE/Q)\n")
-        
-        while True:
-            command = input("명령 입력> ").strip().upper()
-            
-            if command == "Q":
-                print("[종료] 프로그램을 종료합니다.")
-                send_command(client, "STOP\n")
-                break
-            
-            if command in ["W", "S", "A", "D", "X", "SPACE", "STOP", "RELEASE"]:
-                send_command(client, command + "\n")
-            else:
-                print("  알 수 없는 명령입니다. W/S/A/D/X/SPACE/Q를 입력하세요.")
+    def log(self, message):
+        """로그 메시지 추가"""
+        self.log_text.config(state=tk.NORMAL)
+        self.log_text.insert(tk.END, message + "\n")
+        self.log_text.see(tk.END)
+        self.log_text.config(state=tk.DISABLED)
     
-    finally:
-        keyboard.unhook_all()
-        client.close()
-        print("[연결 해제] Unity 연결이 해제되었습니다.")
+    def update_status(self, status, color):
+        """연결 상태 업데이트"""
+        self.status_label.config(text=status, fg=color)
+    
+    def connect_to_unity(self):
+        """Unity 서버에 연결"""
+        self.log("[연결 중] Unity 서버에 연결을 시도합니다...")
+        
+        try:
+            self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client.connect((HOST, PORT))
+            self.connected = True
+            self.update_status("연결됨", "green")
+            self.log(f"[연결 성공] Unity 서버에 연결되었습니다! ({HOST}:{PORT})")
+        except ConnectionRefusedError:
+            self.update_status("연결 실패", "red")
+            self.log("[연결 실패] Unity 서버가 실행 중인지 확인하세요!")
+            self.log("  -> Unity에서 Play 버튼을 누르세요.")
+        except Exception as e:
+            self.update_status("연결 실패", "red")
+            self.log(f"[연결 실패] 오류: {e}")
+    
+    def reconnect(self):
+        """재연결"""
+        if self.client:
+            try:
+                self.client.close()
+            except:
+                pass
+        self.connect_to_unity()
+    
+    def send_command(self, command):
+        """Unity에 명령 전송"""
+        if not self.connected or self.client is None:
+            self.log("[오류] 연결되지 않았습니다!")
+            return
+        
+        try:
+            message = (command + "\n").encode("utf-8")
+            self.client.sendall(message)
+            self.log(f"-> 전송: {command}")
+        except BrokenPipeError:
+            self.log("[오류] 연결이 끊어졌습니다!")
+            self.update_status("연결 끊김", "red")
+            self.connected = False
+        except Exception as e:
+            self.log(f"[전송 오류] {e}")
+    
+    def quit_app(self):
+        """프로그램 종료"""
+        if self.connected and self.client:
+            try:
+                self.client.sendall("STOP\n".encode("utf-8"))
+            except:
+                pass
+            self.client.close()
+        self.root.destroy()
+    
+    def run(self):
+        """GUI 실행"""
+        self.root.protocol("WM_DELETE_WINDOW", self.quit_app)
+        self.root.mainloop()
 
 if __name__ == "__main__":
-    main()
+    app = RobotControlGUI()
+    app.run()
 ```
 
 ### 13-5. 테스트 방법
