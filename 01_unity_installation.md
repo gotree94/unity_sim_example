@@ -247,6 +247,7 @@ Asset Store 검색창에 다음 키워드를 검색해보세요:
 
 | 검색어 | 추천 에셋 | 특징 |
 |--------|----------|------|
+| `Racing Starter Kit FREE` | [Link](https://assetstore.unity.com/packages/templates/systems/racing-starter-kit-free-169750) |  |
 | `3D starter kit` | Simple 3D Starter | 기본적인 3D 캐릭터 이동 체험 |
 | `low poly` | Low Poly Simple Pack | 심플한 3D 모델로 구성된 씬 |
 | `FPS kit` | Unity FPS Sample | 완성된 FPS 게임 예제 |
