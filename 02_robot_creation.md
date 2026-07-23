@@ -407,7 +407,7 @@ public class ShowColliders : MonoBehaviour
 ```
 
 4. 저장하고 Unity로 돌아옵니다.
-5. 이 스크립트를 **任何** 빈 오브젝트(예: "GameManager")에 붙입니다.
+5. 이 스크립트를 **어떤 빈 오브젝트에든** 붙입니다. (예:Hierarchy에서 빈 공간 우클릭 > Create Empty > 이름을 "ShowColliders"로 변경)
 
 ---
 
@@ -473,19 +473,21 @@ RobotMaterial을 선택하고 Inspector에서 다음 값을 설정합니다:
 
 Isaac Sim에서는 **Create > Material > OmniPBR**을 사용하여 Body와 Wheel의 색상을 변경했습니다. Unity에서는 **Material**과 **Shader**를 사용합니다.
 
-### 10-1. URP용 Material 생성 (URP 프로젝트인 경우)
+### 10-1. Material 생성
 
 1. Project 창의 **Assets** 폴더에서 우클릭합니다.
 2. **Create > Material**을 클릭합니다.
 3. 이름을 **"BodyMaterial"**로 변경합니다.
-4. Inspector 상단의 **Shader** 드롭다운에서 **Universal Render Pipeline > Lit**을 선택합니다.
 
-### 10-1-2. Built-in Render Pipeline용 Material (3D Core 프로젝트인 경우)
+#### Shader 설정 방법
 
-1. Project 창에서 우클릭합니다.
-2. **Create > Material**을 클릭합니다.
-3. 이름을 **"BodyMaterial"**로 변경합니다.
-4. Inspector 상단의 **Shader**에서 **Standard**가 선택되어 있는지 확인합니다.
+**URP 프로젝트인 경우:**
+- Inspector 상단의 **Shader** 드롭다운에서 **Universal Render Pipeline > Lit**을 선택합니다.
+- 만약 메뉴가 보이지 않으면: **Shader > Universal Render Pipeline > Lit** 경로를 찾아보세요.
+
+**Built-in Render Pipeline (3D Core) 프로젝트인 경우:**
+- Inspector 상단의 **Shader**에서 **Standard**가 선택되어 있는지 확인합니다.
+- 기본값이 Standard이므로 특별한 변경이 필요 없습니다.
 
 ### 10-2. BodyMaterial 색상 설정
 
@@ -672,7 +674,7 @@ public class RobotController : MonoBehaviour
         if (rb == null) return;
 
         // 속도를 0으로 만들어 완전히 멈춤
-        rb.linearVelocity = Vector3.zero;
+        rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
         Debug.Log("로봇이 멈췄습니다!");
@@ -699,9 +701,9 @@ public class RobotController : MonoBehaviour
 }
 ```
 
-> ⚠️ **중요**: Unity 2023 이상 버전에서는 `Rigidbody.velocity`가 `Rigidbody.linearVelocity`로 변경되었습니다. 본인의 Unity 버전에 맞게 수정해주세요.
-> - Unity 2022 이하: `rb.velocity`, `rb.angularVelocity`
-> - Unity 2023 이상: `rb.linearVelocity`, `rb.angularVelocity`
+> ⚠️ **중요**: Unity 버전에 따라 속성명이 다릅니다.
+> - Unity 2022.3 LTS (이 튜토리얼): `rb.velocity`, `rb.angularVelocity`
+> - Unity 6 이상 (2024~): `rb.linearVelocity`, `rb.angularVelocity`
 
 ### 11-4. 스크립트를 Robot에 적용
 
@@ -842,8 +844,9 @@ Assets/
 ### Q3: 로봇이 너무 빠르거나 느려요
 - RobotController의 **Move Speed** 값을 조정합니다 (기본값: 5)
 
-### Q4: rb.linearVelocity 오류가 나요
-- Unity 버전이 2022 이하라면 `rb.linearVelocity`를 `rb.velocity`로 변경하세요.
+### Q4: rb.velocity 오류가 나요
+- Unity 6 이상(2024~)을 사용한다면 `rb.velocity`를 `rb.linearVelocity`로 변경하세요.
+- 이 튜토리얼은 Unity 2022.3 LTS 기준으로 `rb.velocity`를 사용합니다.
 
 ### Q5: 키보드 입력이 안 먹혀요
 - Game 창을 **마우스로 클릭**하여 포커스를 맞춘 뒤 키보드를 누르세요.

@@ -421,7 +421,7 @@ public class RobotController : MonoBehaviour
     {
         if (rb == null) return;
 
-        rb.linearVelocity = Vector3.zero;
+        rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         externalMoveZ = 0f;
         externalMoveX = 0f;
