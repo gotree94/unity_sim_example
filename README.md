@@ -9,6 +9,12 @@
 
 ---
 
+https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-sim/latest/building-your-first-robot-in-isaac-sim/01-building-a-simple-robot.html
+
+https://docs.isaacsim.omniverse.nvidia.com/latest/robot_setup/asset_structure.html
+
+---
+
 ## 튜토리얼 구성
 
 ### Unity 튜토리얼
