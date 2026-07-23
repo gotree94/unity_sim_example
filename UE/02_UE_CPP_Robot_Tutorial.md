@@ -1,343 +1,114 @@
 # 2단계: C++ 기반 로봇 시뮬레이션
 
-## 2-1. 로봇 프로젝트 구조
-
-### UE 프로젝트 구조 (C++ 기반)
-```
-RobotSimulation/
-├── Source/
-│   └── RobotSimulation/
-│       ├── RobotSimulation.h      # 모듈 헤더
-│       ├── RobotSimulation.cpp    # 모듈 구현
-│       ├── RobotMovement.h        # 로봇 이동 컴포넌트
-│       ├── RobotMovement.cpp
-│       ├── RobotSensor.h          # 로봇 센서 컴포넌트
-│       ├── RobotSensor.cpp
-│       └── RobotSimulation.Build.cs  # 빌드 설정
-├── Content/
-│   ├── Robots/                    # 로봇 메시
-│   ├── Materials/                 # 머티리얼
-│   └── Maps/                      # 레벨
-└── Config/                        # 프로젝트 설정
-```
-
-### Unity와의 구조 비교
-| Unity | Unreal Engine 5 |
-|-------|-----------------|
-| Assets/ | Content/ + Source/ |
-| MonoBehaviour | ActorComponent |
-| GameObject | Actor |
-| Transform | SceneComponent |
-| Rigidbody | PrimitiveComponent (Physics) |
+> **목적**: Unreal Engine 5.8에서 C++을 사용하여 로봇을 만들고 물리 효과 및 키보드 조작 기능을 구현  
+> **소요 시간**: 약 120~180분  
+> **전제 조건**: [1단계: UE5 설치 및 기초 학습](01_UE_Installation.md) 완료  
+> **UE 버전**: Unreal Engine 5.8
 
 ---
 
-## 2-2. 로봇 액터 생성
+## 목차
 
-### C++ 클래스 구조
-```cpp
-// RobotActor.h
-#pragma once
-
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "RobotActor.generated.h"
-
-UCLASS()
-class ROBOTSIMULATION_API ARobotActor : public AActor
-{
-    GENERATED_BODY()
-    
-public:    
-    ARobotActor();
-
-protected:
-    virtual void BeginPlay() override;
-
-public:    
-    virtual void Tick(float DeltaTime) override;
-
-    // 로봇 메시 컴포넌트
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    UStaticMeshComponent* RobotMesh;
-
-    // 이동 컴포넌트
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    URobotMovementComponent* MovementComponent;
-
-    // 센서 컴포넌트
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    URobotSensorComponent* SensorComponent;
-};
-```
-
-### 컴포넌트 기반 아키텍처
-Unity의 `MonoBehaviour`와 유사하게 UE5에서는 `ActorComponent`를 사용:
-- **SceneComponent**: 트랜스폼(위치, 회전, 스케일) 관리
-- **StaticMeshComponent**: 메시 렌더링
-- **ActorComponent**: 로직 및 기능 구현
+| 단계 | 파일 | 내용 | 소요 시간 |
+|------|------|------|----------|
+| **1** | [프로젝트 생성 및 Ground](02_1_UE_Project_Setup.md) | 프로젝트 생성, Ground(지면) 만들기 | 약 20~30분 |
+| **2** | [로봇 구조 만들기](02_2_UE_Robot_Structure.md) | Body, Wheels 생성 + Transform 값 | 약 30~40분 |
+| **3** | [물리 시스템 및 입력 설정](02_3_UE_Physics_Input.md) | Chaos Physics, Enhanced Input, Materials | 약 30~40분 |
+| **4** | [C++ 클래스 구현](02_4_UE_CPP_Code.md) | 전체 C++ 코드 구현 | 약 30~40분 |
+| **5** | [카메라 및 테스트](02_5_UE_Camera_Test.md) | 카메라 추적, 빌드, 테스트, FAQ | 약 20~30분 |
 
 ---
 
-## 2-3. 로봇 이동 구현
+## 전체 흐름
 
-### 이동 컴포넌트
-```cpp
-// RobotMovement.h
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class ROBOTSIMULATION_API URobotMovementComponent : public UActorComponent
-{
-    GENERATED_BODY()
-
-public:    
-    URobotMovementComponent();
-
-    // 이동 속도
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float MoveSpeed = 500.0f;
-
-    // 회전 속도
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float RotationSpeed = 100.0f;
-
-    // 이동 함수
-    UFUNCTION(BlueprintCallable, Category = "Movement")
-    void MoveForward(float Value);
-
-    UFUNCTION(BlueprintCallable, Category = "Movement")
-    void MoveRight(float Value);
-
-    UFUNCTION(BlueprintCallable, Category = "Movement")
-    void Rotate(float Value);
-};
 ```
-
-### 이동 구현
-```cpp
-// RobotMovement.cpp
-void URobotMovementComponent::MoveForward(float Value)
-{
-    if (Value != 0.0f)
-    {
-        FVector Direction = GetOwner()->GetActorForwardVector();
-        FVector DeltaMovement = Direction * Value * MoveSpeed * GetWorld()->GetDeltaSeconds();
-        GetOwner()->AddActorWorldOffset(DeltaMovement, true);
-    }
-}
-
-void URobotMovementComponent::MoveRight(float Value)
-{
-    if (Value != 0.0f)
-    {
-        FVector Direction = GetOwner()->GetActorRightVector();
-        FVector DeltaMovement = Direction * Value * MoveSpeed * GetWorld()->GetDeltaSeconds();
-        GetOwner()->AddActorWorldOffset(DeltaMovement, true);
-    }
-}
-
-void URobotMovementComponent::Rotate(float Value)
-{
-    if (Value != 0.0f)
-    {
-        FRotator DeltaRotation(0.0f, Value * RotationSpeed * GetWorld()->GetDeltaSeconds(), 0.0f);
-        GetOwner()->AddActorWorldRotation(DeltaRotation);
-    }
-}
+[1단계] 프로젝트 생성 및 Ground
+    |
+    +-- UE 5.8 프로젝트 생성 (C++)
+    +-- Ground(지면) 생성
+    +-- 기본 레벨 설정
+    |
+[2단계] 로봇 구조 만들기
+    |
+    +-- RobotActor Blueprint 생성
+    +-- Body (Static Mesh: Cube) 생성
+    +-- 바퀴 4개 (Static Mesh: Cylinder) 생성
+    +-- Transform 값 설정 (위치, 회전, 스케일)
+    |
+[3단계] 물리 시스템 및 입력 설정
+    |
+    +-- Chaos Physics 설정 (Simulate Physics)
+    +-- Collision 설정 (BlockAll)
+    +-- Enhanced Input System 설정
+    +-- Material/색상 적용
+    |
+[4단계] C++ 클래스 구현
+    |
+    +-- RobotActor.h/cpp (액터)
+    +-- RobotMovement.h/cpp (이동)
+    +-- RobotSensor.h/cpp (센서)
+    +-- RobotController.h/cpp (컨트롤러)
+    |
+[5단계] 카메라 및 테스트
+    |
+    +-- Spring Arm + Camera 설정
+    +-- 프로젝트 빌드
+    +-- 테스트 및 디버깅
+    +-- 문제 해결
 ```
 
 ---
 
-## 2-4. 로봇 센서 구현
+## Isaac Sim → UE 좌표축 변환
 
-### 센서 컴포넌트
-```cpp
-// RobotSensor.h
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class ROBOTSIMULATION_API URobotSensorComponent : public UActorComponent
-{
-    GENERATED_BODY()
+| 구분 | Isaac Sim | Unreal Engine 5.8 | Unity |
+|------|-----------|-------------------|-------|
+| **위쪽 방향** | Z축 | **Z축** (동일) | Y축 |
+| **앞쪽 방향** | Y축 | X축 | Z축 |
+| **오른쪽 방향** | X축 | Y축 | X축 |
 
-public:    
-    URobotSensorComponent();
-
-    // 감지 범위
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sensor")
-    float DetectionRange = 1000.0f;
-
-    // 감지 각도 (도)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sensor")
-    float DetectionAngle = 90.0f;
-
-    // 라인 트레이스로 장애물 감지
-    UFUNCTION(BlueprintCallable, Category = "Sensor")
-    bool DetectObstacle(FVector& HitLocation);
-
-    // 방향 벡터로 감지
-    UFUNCTION(BlueprintCallable, Category = "Sensor")
-    TArray<AActor*> DetectObjectsInDirection(FVector Direction);
-};
+```
+Isaac Sim (Z-up)          UE5 (Z-up)
+       Z ↑                      Z ↑
+         |                       |
+         |                       |
+         +----→ Y            X ←─+────→ Y
+        /                      /
+       X                      X (전방)
 ```
 
-### 센서 구현
-```cpp
-// RobotSensor.cpp
-bool URobotSensorComponent::DetectObstacle(FVector& HitLocation)
-{
-    AActor* Owner = GetOwner();
-    if (!Owner) return false;
-
-    FVector Start = Owner->GetActorLocation();
-    FVector End = Start + Owner->GetActorForwardVector() * DetectionRange;
-
-    FHitResult HitResult;
-    FCollisionQueryParams QueryParams;
-    QueryParams.AddIgnoredActor(Owner);
-
-    if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, QueryParams))
-    {
-        HitLocation = HitResult.ImpactPoint;
-        return true;
-    }
-    return false;
-}
-
-TArray<AActor*> URobotSensorComponent::DetectObjectsInDirection(FVector Direction)
-{
-    TArray<AActor*> DetectedActors;
-    AActor* Owner = GetOwner();
-    if (!Owner) return DetectedActors;
-
-    FVector Start = Owner->GetActorLocation();
-    FVector End = Start + Direction * DetectionRange;
-
-    TArray<FHitResult> HitResults;
-    FCollisionQueryParams QueryParams;
-    QueryParams.AddIgnoredActor(Owner);
-
-    GetWorld()->LineTraceMultiByChannel(HitResults, Start, End, ECC_Visibility, QueryParams);
-
-    for (const FHitResult& Hit : HitResults)
-    {
-        if (AActor* HitActor = Hit.GetActor())
-        {
-            DetectedActors.AddUnique(HitActor);
-        }
-    }
-    return DetectedActors;
-}
-```
+> 💡 **팁**: Isaac Sim과 UE5는 모두 Z-up 좌표계를 사용합니다. Unity(Y-up)와 달리 좌표축 변환이 적습니다.
 
 ---
 
-## 2-5. 로봇 컨트롤러
+## Unity와의 주요 차이점
 
-### 입력 시스템 설정
-1. 편집 → 프로젝트 설정 → 엔진 → 입력
-2. 액션 매핑 추가:
-   - `MoveForward`: W, S 키
-   - `MoveRight`: A, D 키
-   - `Rotate`: Q, E 키
-
-### 입력 처리
-```cpp
-// RobotController.h
-UCLASS()
-class ROBOTSIMULATION_API ARobotController : public APlayerController
-{
-    GENERATED_BODY()
-
-protected:
-    virtual void SetupInputComponent() override;
-
-    void MoveForward(float Value);
-    void MoveRight(float Value);
-    void Rotate(float Value);
-};
-
-// RobotController.cpp
-void ARobotController::SetupInputComponent()
-{
-    Super::SetupInputComponent();
-
-    InputComponent->BindAxis("MoveForward", this, &ARobotController::MoveForward);
-    InputComponent->BindAxis("MoveRight", this, &ARobotController::MoveRight);
-    InputComponent->BindAxis("Rotate", this, &ARobotController::Rotate);
-}
-
-void ARobotController::MoveForward(float Value)
-{
-    if (ARobotActor* Robot = Cast<ARobotActor>(GetPawn()))
-    {
-        Robot->MovementComponent->MoveForward(Value);
-    }
-}
-
-void ARobotController::MoveRight(float Value)
-{
-    if (ARobotActor* Robot = Cast<ARobotActor>(GetPawn()))
-    {
-        Robot->MovementComponent->MoveRight(Value);
-    }
-}
-
-void ARobotController::Rotate(float Value)
-{
-    if (ARobotActor* Robot = Cast<ARobotActor>(GetPawn()))
-    {
-        Robot->MovementComponent->Rotate(Value);
-    }
-}
-```
+| 항목 | Unity | Unreal Engine 5.8 |
+|------|-------|-------------------|
+| 주 언어 | C# | C++ / Blueprint |
+| 에셋 구조 | Assets/ | Content/ + Source/ |
+| 오브젝트 | GameObject | Actor |
+| 컴포넌트 | MonoBehaviour | ActorComponent |
+| 물리 엔진 | PhysX | Chaos Physics |
+| 입력 시스템 | Input Manager / Input System | Enhanced Input System |
+| 렌더링 | URP/HDRP | Nanite/Lumen |
 
 ---
 
-## 2-6. 좌표축 변환 (Unity → UE)
+## 참고 자료
 
-### Unity와 UE 좌표축 비교
-| 항목 | Unity | Unreal Engine 5 |
-|------|-------|-----------------|
-| 상향 축 | Y-up | Z-up |
-| 전향 축 | Z+ (전방) | X+ (전방) |
-| 우향 축 | X+ (우측) | Y+ (우측) |
-
-### 변환 공식
-```
-Unity (x, y, z) → UE5 (x, z, y)
-```
-
-### 변환 함수
-```cpp
-FVector ConvertUnityToUE(FVector UnityVector)
-{
-    return FVector(UnityVector.X, UnityVector.Z, UnityVector.Y);
-}
-
-FRotator ConvertUnityToUE(FRotator UnityRotation)
-{
-    return FRotator(UnityRotation.Pitch, UnityRotation.Yaw, UnityRotation.Roll);
-}
-```
-
-### 주의사항
-- Isaac Sim → Unity 변환 후 UE로 변환 시 2단계 변환 필요
-- 회전축 변환 시 짐벌락(Gimbal Lock) 주의
-- 스케일 변환은 일반적으로 1:1 유지
+| 자료 | URL |
+|------|-----|
+| UE 5.8 문서 | https://docs.unrealengine.com/5.8/en-US/ |
+| Enhanced Input System | https://docs.unrealengine.com/5.8/en-US/enhanced-input-in-unreal-engine/ |
+| Chaos Physics | https://docs.unrealengine.com/5.8/en-US/physics-and-collision/ |
+| C++ API 레퍼런스 | https://docs.unrealengine.com/5.8/en-US/API/ |
 
 ---
 
-## 2-7. 빌드 및 테스트
+**다음 단계**: [1. 프로젝트 생성 및 Ground](02_1_UE_Project_Setup.md)
 
-### 프로젝트 빌드
-1. Unreal Editor → 파일 → 프로젝트 빌드
-2. 또는 Visual Studio에서 F5로 디버깅 모드 실행
+---
 
-### 테스트 방법
-1. 에디터에서 "재생" 버튼 클릭
-2. 키보드로 로봇 조작:
-   - W/S: 전후진
-   - A/D: 좌우 이동
-   - Q/E: 회전
-3. 센서 동작 확인 (라인 트레이스)
-
-### 다음 단계
-- [3단계: Blueprint 기반 로봇 시뮬레이션](./03_UE_Blueprint_Robot_Tutorial.md)
+> **저작권**: 본 교육 자료는 교육 목적으로 자유롭게 사용할 수 있습니다.  
+> **최종 업데이트**: 2026년 7월
