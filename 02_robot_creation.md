@@ -82,7 +82,7 @@ Isaac Sim (Z-up)          Unity (Y-up)
 
 #### 높이 축 묶기 (부모-자식 관계)
 
-最終적으로 Body와 Wheel은 하나의 **Robot** 빈 오브젝트 아래에 자식으로 배치됩니다:
+최종적으로 Body와 Wheel은 하나의 **Robot** 빈 오브젝트 아래에 자식으로 배치됩니다:
 
 ```
 Robot (빈 오브젝트, 부모)
