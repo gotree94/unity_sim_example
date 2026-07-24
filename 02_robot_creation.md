@@ -343,13 +343,13 @@ Unity에서는 다음과 같이 설정합니다:
 
 1. Hierarchy에서 **Front_Right**을 선택합니다.
 2. **Ctrl + D** 키를 눌러 복제합니다.
-3. 복제된 오브젝트의 이름을 **"Front_Left"**로 변경합니다.
+3. 복제된 오브젝트의 이름을 **"Rear_Right"**로 변경합니다.
 4. Inspector의 Transform에서 **Position Z**를 **`-0.5`**로 변경합니다.
 
 ### 6-4. 뒷바퀴 생성
 
 1. **Front_Right**을 선택하고 **Ctrl + D**로 복제합니다.
-2. 이름을 **"Rear_Right"**로 변경합니다.
+2. 이름을 **"Front_Left"**로 변경합니다.
 3. **Position X**를 **`-0.75`**로 변경합니다 (뒷쪽으로 이동).
 
 4. **Front_Left**을 선택하고 **Ctrl + D**로 복제합니다.
