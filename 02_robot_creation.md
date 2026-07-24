@@ -31,6 +31,7 @@
    - URP(Universal Render Pipeline)를 추천합니다. 렌더링 품질이 좋고 성능도 우수합니다.
 4. 프로젝트 이름을 **"RobotTutorial"**로 입력합니다.
 5. 프로젝트 저장 위치를 설정한 뒤 **"Create project"** 버튼을 클릭합니다.
+6. 길이 1은 : 1m
 
 ### 3-2. 씬(Scene) 확인
 
