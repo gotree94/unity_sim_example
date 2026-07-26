@@ -1,4 +1,4 @@
-# 6단계-1: TurtleBot3 URDF 임포트 완벽 가이드 (초심자용)
+# 6단계-1: TurtleBot3 URDF 임포트 가이드
 
 > **목적**: TurtleBot3 Burger 모델을 Unity에 안정적으로 가져와서 구동까지 완성  
 > **소요 시간**: 약 60~90분  
