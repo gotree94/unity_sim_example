@@ -153,6 +153,20 @@ Copy-Item "C:\Users\Administrator\Downloads\turtlebot3\turtlebot3_description\me
           "C:\Users\Administrator\Desktop\TurtleBot3\Assets\URDF\meshes\" -Recurse
 ```
 
+```powershell
+# Unity asset 폴더에 URDF 폴더 생성
+New-Item -ItemType Directory -Path "C:\Users\user\TurtleBot3\Assets\URDF\meshes" -Force
+
+# URDF 파일 복사
+Copy-Item "C:\Users\user\Downloads\turtlebot3\turtlebot3_description\urdf\turtlebot3_burger.urdf" `
+          "C:\Users\user\TurtleBot3\Assets\URDF\"
+
+# meshes 폴더 통째로 복사 (하위 폴더 포함)
+Copy-Item "C:\Users\user\Downloads\turtlebot3\turtlebot3_description\meshes\*" `
+          "C:\Users\user\TurtleBot3\Assets\URDF\meshes\" -Recurse
+```
+
+
 ### 1-3. 복사 후 폴더 구조 확인
 
 이렇게 되었는지 확인합니다:
