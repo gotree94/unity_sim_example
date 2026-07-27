@@ -158,7 +158,7 @@ Copy-Item "C:\Users\Administrator\Downloads\turtlebot3\turtlebot3_description\me
 New-Item -ItemType Directory -Path "C:\Users\user\TurtleBot3\Assets\URDF\meshes" -Force
 
 # URDF 파일 복사
-Copy-Item "C:\Users\user\Downloads\turtlebot3\turtlebot3_description\urdf\turtlebot3_burger.urdf" `
+Copy-Item "C:\Users\user\Downloads\turtlebot3-main\turtlebot3_description\urdf\turtlebot3_burger.urdf" `
           "C:\Users\user\TurtleBot3\Assets\URDF\"
 
 # meshes 폴더 통째로 복사 (하위 폴더 포함)
