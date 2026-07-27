@@ -654,12 +654,12 @@ Assets\
 
 | 로봇/제조사 | 저장소 | 비고 |
 |---|---|---|
-| Universal Robots | `ros-industrial/universal_robot` | UR3, UR5, UR10 등 |
-| Franka Emika | `frankaemika/franka_ros` | Panda 로봇팔 |
-| Boston Dynamics | `boston-dynamics/spot-sdk` | 커뮤니티 URDF 포팅 다수 |
-| Unitree | `unitreerobotics/unitree_ros` | Go1, A1, B1 등 4족 로봇 |
-| ROBOTIS | `ROBOTIS-GIT` | TurtleBot3, OpenManipulator 등 |
-| Kinova | `Kinovarobotics/ros_kortex` | Gen3 등 소형 협동로봇 팔 |
+| Universal Robots | https://github.com/ros-industrial/universal_robot | UR3, UR5, UR10 등 |
+| Franka Emika | https://github.com/frankaemika/franka_ros | Panda 로봇팔 |
+| Boston Dynamics | https://github.com/boston-dynamics/spot-sdk | 커뮤니티 URDF 포팅 다수 |
+| Unitree | https://github.com/unitreerobotics/unitree_ros | Go1, A1, B1 등 4족 로봇 |
+| ROBOTIS | https://github.com/ROBOTIS-GIT | TurtleBot3, OpenManipulator 등 |
+| Kinova | https://github.com/Kinovarobotics/ros_kortex | Gen3 등 소형 협동로봇 팔 |
 
 ## 통합 컬렉션 / 저장소
 
