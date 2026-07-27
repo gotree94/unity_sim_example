@@ -634,18 +634,6 @@ Assets\
 
 ---
 
-## 다음 단계
-
-| 단계 | 문서 | 내용 |
-|------|------|------|
-| 7단계 | 07_Sensor_Simulation_Tutorial.md | LiDAR, IMU 센서 시뮬레이션 |
-| 8단계 | 08_ROS2_Integration_Tutorial.md | ROS2와 Unity 연결 |
-| 9단계 | 09_TurtleBot3_SLAM_Navigation_Tutorial.md | SLAM과 자율 주행 |
-
-
----
-
-
 # 로봇 URDF 파일 찾을 수 있는 사이트 리스트
 
 ## 공식 로봇 제조사 GitHub 저장소
