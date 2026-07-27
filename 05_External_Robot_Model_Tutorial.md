@@ -162,7 +162,7 @@ Copy-Item "C:\Users\user\Downloads\turtlebot3-main\turtlebot3_description\urdf\t
           "C:\Users\user\TurtleBot3\Assets\URDF\"
 
 # meshes 폴더 통째로 복사 (하위 폴더 포함)
-Copy-Item "C:\Users\user\Downloads\turtlebot3\turtlebot3_description\meshes\*" `
+Copy-Item "C:\Users\user\Downloads\turtlebot3-main\turtlebot3_description\meshes\*" `
           "C:\Users\user\TurtleBot3\Assets\URDF\meshes\" -Recurse
 ```
 
