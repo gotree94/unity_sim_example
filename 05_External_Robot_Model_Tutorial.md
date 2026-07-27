@@ -641,3 +641,48 @@ Assets\
 | 7단계 | 07_Sensor_Simulation_Tutorial.md | LiDAR, IMU 센서 시뮬레이션 |
 | 8단계 | 08_ROS2_Integration_Tutorial.md | ROS2와 Unity 연결 |
 | 9단계 | 09_TurtleBot3_SLAM_Navigation_Tutorial.md | SLAM과 자율 주행 |
+
+
+---
+
+
+# 로봇 URDF 파일 찾을 수 있는 사이트 리스트
+
+## 공식 로봇 제조사 GitHub 저장소
+
+| 로봇/제조사 | 저장소 | 비고 |
+|---|---|---|
+| Universal Robots | `ros-industrial/universal_robot` | UR3, UR5, UR10 등 |
+| Franka Emika | `frankaemika/franka_ros` | Panda 로봇팔 |
+| Boston Dynamics | `boston-dynamics/spot-sdk` | 커뮤니티 URDF 포팅 다수 |
+| Unitree | `unitreerobotics/unitree_ros` | Go1, A1, B1 등 4족 로봇 |
+| ROBOTIS | `ROBOTIS-GIT` | TurtleBot3, OpenManipulator 등 |
+| Kinova | `Kinovarobotics/ros_kortex` | Gen3 등 소형 협동로봇 팔 |
+
+## 통합 컬렉션 / 저장소
+
+- **ROS-Industrial**: `github.com/ros-industrial` — ABB, Fanuc, Yaskawa, KUKA 등 산업용 로봇팔 URDF 대량 보유
+- **ros2_control demos**: `github.com/ros-controls/ros2_control_demos`
+- **AWS RoboMaker Sample Application**: 다양한 샘플 URDF 포함
+- **awesome-URDF**: GitHub 검색 시 유사 큐레이션 리스트 다수 존재
+
+## 시뮬레이터 연계 저장소
+
+- **NVIDIA Isaac Sim / Isaac Lab**: `isaac-sim/IsaacLab` — URDF→USD 변환 예제 다수 포함
+- **MuJoCo Menagerie**: `google-deepmind/mujoco_menagerie` — MJCF 위주지만 URDF 변환본도 많고 품질 매우 높음
+- **PyBullet**: `bulletphysics/bullet3/examples/pybullet/gym/pybullet_data` — 다양한 예제 URDF 내장
+- **Gazebo/Ignition Fuel**: `app.gazebosim.org/fuel` — 모델 공유 플랫폼, URDF/SDF 혼재
+
+## 검색 / 큐레이션 사이트
+
+- **GitHub 검색**: `filename:*.urdf` 또는 `extension:urdf` 쿼리로 직접 검색 가능
+- **ROS Index**: `index.ros.org` — 패키지 검색 후 저장소 내 URDF 확인
+- **Robot Description Formats 비교**: ROS Wiki → 현재는 Discourse로 이전
+
+## VT6-mini / 6축 로봇팔 프로젝트 관련 추천
+
+- `ros-industrial/universal_robot` — UR 시리즈 구조 참고용
+- `Kinovarobotics/ros_kortex` — Kinova Gen3, VT6-mini 스케일과 유사한 소형 협동로봇 팔
+- MuJoCo Menagerie의 팔 모델들 — 관절 리밋, 관성값 등이 정교하게 튜닝되어 있어 참고 가치 높음
+
+
