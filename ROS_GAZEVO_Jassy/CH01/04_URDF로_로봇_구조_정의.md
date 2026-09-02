@@ -82,8 +82,6 @@ xacro /root/myros_sketch/robot.urdf.xacro
 
 ![base_link 표시](../img/image64.bmp)
 
-![문법 체크](../img/image65.bmp)
-
 ### robot_state_publisher 실행하기
 
 robot_state_publisher는 URDF를 기반으로 조인트 상태를 받아 각 링크의 좌표 변환(TF)을 계산합니다.
@@ -93,6 +91,10 @@ robot_state_publisher는 URDF를 기반으로 조인트 상태를 받아 각 링
 ```bash
 ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /root/myros_sketch/robot.urdf.xacro)"
 ```
+
+2. 그러면 다음과 같이 실행됩니다.
+
+![문법 체크](../img/image65.bmp)
 
 ![robot_state_publisher 실행](../img/image66.bmp)
 
