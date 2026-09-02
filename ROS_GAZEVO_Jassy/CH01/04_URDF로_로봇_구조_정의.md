@@ -7,7 +7,7 @@
 1. rviz2 시각화를 위한 visual 태그
 2. 가제보 시뮬레이션을 위한 collision, inertial 태그
 
-![robot 태그](../img/image60.bmp)
+<img src="../img/image60.bmp" width="30%">
 
 ## 04_1 myros_sketch 폴더 및 기본 파일 생성하기
 
