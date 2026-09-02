@@ -34,13 +34,11 @@ touch camera.xacro
 
 ![차동 구동 로봇](../img/image61.bmp)
 
-4. 3개의 명령창을 준비합니다.
+3. 3개의 명령창을 준비합니다.
 
 ![폴더 구조 확인](../img/image48.bmp)
 
 ![폴더 구조 확인](../img/image62.bmp)
-
-![명령창 준비](../img/image63.bmp)
 
 > ※ 이후에 이 3개의 명령창에 다음 명령들을 차례대로 수행하며 실습을 진행합니다.
 
@@ -72,6 +70,8 @@ touch camera.xacro
 ```
 
 2. 파일을 닫았다 다시 열어줍니다.
+
+![명령창 준비](../img/image63.bmp)
 
 ![base_link 표시](../img/image64.bmp)
 
