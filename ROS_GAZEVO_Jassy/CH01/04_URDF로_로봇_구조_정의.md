@@ -7,7 +7,7 @@
 1. rviz2 시각화를 위한 visual 태그
 2. 가제보 시뮬레이션을 위한 collision, inertial 태그
 
-![차동 구동 로봇](../img/image61.bmp)
+![robot 태그](../img/image60.bmp)
 
 ## 04_1 myros_sketch 폴더 및 기본 파일 생성하기
 
@@ -32,9 +32,11 @@ touch camera.xacro
 
 2. VS Code에서 myros_sketch 폴더와 생성된 파일을 확인합니다.
 
+![차동 구동 로봇](../img/image61.bmp)
+
 ![폴더 구조 확인](../img/image62.bmp)
 
-3. 3개의 명령창을 준비합니다.
+4. 3개의 명령창을 준비합니다.
 
 ![명령창 준비](../img/image63.bmp)
 
