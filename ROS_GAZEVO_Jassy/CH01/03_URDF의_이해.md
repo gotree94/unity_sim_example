@@ -12,9 +12,11 @@ ROS에서 사용하는 로봇 모델링 방식을 URDF라고 하며, Unified Rob
 
 `<link>` 태그는 로봇의 강체(rigid body) 부분의 외형과 물리적 속성을 기술하는 데 사용됩니다. 외형에는 크기, 색상, 형태가 포함되고, 물리적 속성에는 질량(mass), 관성 행렬(inertia matrix), 충돌(collision) 파라미터 등이 포함됩니다.
 
-![로봇 팔 링크](../img/image54.bmp)
+![쉘 이동](../img/image53.bmp)
 
 링크를 기술한 내용을 살펴보겠습니다.
+
+![로봇 팔 링크](../img/image54.bmp)
 
 ![링크 기술 상세](../img/image55.bmp)
 
