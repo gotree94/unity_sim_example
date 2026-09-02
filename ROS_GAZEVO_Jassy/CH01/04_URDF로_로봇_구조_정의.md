@@ -161,15 +161,17 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 ![robot_state_publisher 실행](../img/image66.bmp)
 
-![재구동](../img/image67.bmp)
-
 > ※ ctrl+c키를 눌러 수행중인 프로그램을 종료한 후, 윗 방향 키(page up)를 누르면 이전에 수행했던 명령이 자동으로 입력됩니다.
+
+---
 
 ## 04_3 chassis_joint, chassis 추가하기
 
 다음은 chassis_joint와 chassis를 정의합니다. 이 책에서 다루는 chassis는 메인보드가 됩니다.
 
 > **chassis_joint**는 base_link와 차체(chassis)를 연결하는 관절로, 두 링크 간의 상대적 위치와 자세 관계를 정의합니다.
+
+![재구동](../img/image67.bmp)
 
 1. 내용을 계속해서 추가합니다.
 
