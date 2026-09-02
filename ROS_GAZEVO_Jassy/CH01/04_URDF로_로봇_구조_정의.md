@@ -43,9 +43,9 @@ touch camera.xacro
 > ※ 이후에 이 3개의 명령창에 다음 명령들을 차례대로 수행하며 실습을 진행합니다.
 
 ```
-① ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /root/myros_sketch/robot.urdf.xacro)"
-② rviz2 -d /root/myros_sketch/view_bot.rviz
-③ ros2 run joint_state_publisher_gui joint_state_publisher_gui
+ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /root/myros_sketch/robot.urdf.xacro)"
+rviz2 -d /root/myros_sketch/view_bot.rviz
+ros2 run joint_state_publisher_gui joint_state_publisher_gui
 ```
 
 ## 04_2 base_link 정의하기
@@ -73,13 +73,14 @@ touch camera.xacro
 
 ![명령창 준비](../img/image63.bmp)
 
-![base_link 표시](../img/image64.bmp)
-
 3. 문법을 체크해 봅니다.
 
 ```bash
 xacro /root/myros_sketch/robot.urdf.xacro
 ```
+문법에 문제가 없을 경우 파일의 내용이 화면에 출력됩니다.
+
+![base_link 표시](../img/image64.bmp)
 
 ![문법 체크](../img/image65.bmp)
 
