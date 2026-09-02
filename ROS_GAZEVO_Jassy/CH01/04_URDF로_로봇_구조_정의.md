@@ -96,7 +96,7 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 ![문법 체크](../img/image65.bmp)
 
-![robot_state_publisher 실행](../img/image66.bmp)
+---
 
 ### robot_core_diffdrive.xacro 파일 포함하기
 
@@ -154,6 +154,12 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 ```
 
 3. 수정한 2개 파일을 저장한 후, 명령을 재구동합니다.
+
+```
+ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /root/myros_sketch/robot.urdf.xacro)"
+```
+
+![robot_state_publisher 실행](../img/image66.bmp)
 
 ![재구동](../img/image67.bmp)
 
