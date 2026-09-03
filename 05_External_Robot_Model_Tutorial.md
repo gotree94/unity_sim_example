@@ -371,31 +371,52 @@ Project 창에서 **Assets** 폴더 우클릭 → **Create > C# Script** → 이
 ```csharp
 using UnityEngine;
 
+// ############################################################
+// # TurtleBot3Setup
+// # 역할: URDF Importer가 만든 ArticulationBody(관절 물리) 체계를
+// #       일반 Rigidbody(단일 물리) 체계로 일괄 전환합니다.
+// #       Play 시작 시 Awake()에서 한 번 자동 실행됩니다.
+// ############################################################
 public class TurtleBot3Setup : MonoBehaviour
 {
-    [Header("물리 설정")]
+    // ---------- [물리 설정] ----------
+    // 로봇 전체 질량(kg). TurtleBot3 Burger 기본값은 0.826kg.
+    // 가속/관성/바닥 마찰 반응에 영향을 줍니다. 가벼울수록 관성 영향이 작아 잘 미끄러집니다.
     public float robotMass = 0.826f;
+
+    // 중력 적용 여부(true면 플레이 시 바닥으로 떨어짐). 바닥(Ground)이 없으면 추락하므로
+    // 반드시 씬에 "Ground" 오브젝트가 있어야 합니다.
     public bool useGravity = true;
 
-    [Header("바퀴 설정")]
+    // ---------- [바퀴 설정] ----------
+    // 바퀴 반지름(m). TurtleBot3 Burger 기본 휠 반지름 0.033m.
+    // Capsule Collider의 radius 값으로 사용됩니다.
     public float wheelRadius = 0.033f;
+
+    // 바퀴 폭/두께(m). Capsule Collider의 height(길이)로 사용됩니다.
     public float wheelWidth = 0.018f;
 
+    // Awake: 오브젝트가 활성화되는 최초 시점(Play 직전)에 한 번 실행됩니다.
+    // 전환 순서가 중요합니다: ArticulationBody를 먼저 제거해야 Rigidbody가 충돌 없이 적용됩니다.
     void Awake()
     {
-        RemoveArticulationBodies();
-        SetupRigidbody();
-        ReplaceWheelColliders();
-        SetupGround();
+        RemoveArticulationBodies(); // 1) URDF 관절 물리(ArticulationBody) 제거
+        SetupRigidbody();           // 2) 단일 Rigidbody 추가/설정
+        ReplaceWheelColliders();    // 3) 바퀴/Caster/LiDAR 충돌체 정리
+        SetupGround();              // 4) 바닥 물리 재질 적용
         Debug.Log("TurtleBot3 Setup 완료! Rigidbody 방식으로 전환됨.");
     }
 
+    // 함수: ArticulationBody(관절 물리)를 전부 제거
+    // 이유: ArticulationBody는 다중 링크(관절) 기반 물리로 바퀴 구동/Ground 충돌이
+    //       불안정합니다. Rigidbody 단일 물리로 바꿔야 MovePosition 조작이 안정적입니다.
+    // 중요: UrdfJoint/UrdfInertial 같은 Urdf 컴포넌트가 ArticulationBody를 "참조"하고 있어
+    //       ArticulationBody만 먼저 지우면 "depends on it" 오류로 실패합니다.
+    //       그래서 ① Urdf 스크립트를 먼저 제거 → ② ArticulationBody를 제거 순서로 진행합니다.
     void RemoveArticulationBodies()
     {
-        // 1) Urdf 스크립트 컴포넌트를 먼저 제거. UrdfJoint/UrdfInertial 등은
-        //    ArticulationBody를 참조하고 있어서, ArticulationBody를 먼저 지우면
-        //    "Can't remove ... because ... depends on it" 오류가 발생합니다.
-        //    Urdf<->Urdf 간 참조가 사라질 때까지 반복해서 제거합니다.
+        // ① Urdf 스크립트(UrdfJoint, UrdfInertial, UrdfVisual 등)를 먼저 제거.
+        //    Urdf<->Urdf 간에도 서로 참조가 있을 수 있어, 남는 것이 없을 때까지 반복 제거.
         bool found = true;
         while (found)
         {
@@ -403,7 +424,7 @@ public class TurtleBot3Setup : MonoBehaviour
             foreach (var comp in GetComponentsInChildren<Component>(true))
             {
                 if (comp == null) continue;
-                if (comp.GetType().Name.Contains("Urdf"))
+                if (comp.GetType().Name.Contains("Urdf")) // 클래스 이름에 "Urdf"가 포함된 컴포넌트
                 {
                     DestroyImmediate(comp);
                     found = true;
@@ -412,7 +433,7 @@ public class TurtleBot3Setup : MonoBehaviour
             }
         }
 
-        // 2) 참조가 제거된 후 ArticulationBody를 안전하게 제거.
+        // ② 이제 참조 컴포넌트가 없으므로 ArticulationBody를 안전하게 제거.
         ArticulationBody[] abs = GetComponentsInChildren<ArticulationBody>(true);
         foreach (var ab in abs)
             DestroyImmediate(ab);
@@ -420,28 +441,37 @@ public class TurtleBot3Setup : MonoBehaviour
         Debug.Log($"ArticulationBody/UrdfJoint 제거 완료: {abs.Length}개");
     }
 
+    // 함수: 루트 오브젝트(turtlebot3_burger)에 Rigidbody를 추가하고 물리 값을 설정
     void SetupRigidbody()
     {
+        // 이미 Rigidbody가 있으면 재사용, 없으면 새로 추가
         Rigidbody rb = gameObject.GetComponent<Rigidbody>();
         if (rb == null)
             rb = gameObject.AddComponent<Rigidbody>();
 
-        rb.mass = robotMass;
-        rb.useGravity = useGravity;
-        rb.isKinematic = false;
-        rb.drag = 0f;
-        rb.angularDrag = 0.05f;
+        rb.mass = robotMass;         // 질량(kg) → 가속/충돌 반응 결정
+        rb.useGravity = useGravity;  // 중력 적용 여부 (true면 추락 → Ground 필수)
+        rb.isKinematic = false;      // false = 물리엔진이 추진/충돌을 처리.
+                                     // true로 하면 외부 힘/중력이 무시되고 MovePosition만으로 이동하게 됨.
+        rb.drag = 0f;                // 선형 마찰(공기저항). 0 = 감속 없음(정확한 이동)
+        rb.angularDrag = 0.05f;      // 회전 마찰(각속도 감쇠). 살짝 둬서 회전이 과도하게 이어지지 않게 함
     }
 
+    // 함수: 바퀴/Caster/LiDAR의 충돌체를 정리하고 바퀴에 회전용 Collider를 새로 배치
+    // 이유: URDF 임포트 시 Mesh Collider가 붙는데, 복잡한 메시는 물리 연산이 무겁고
+    //       바퀴 굴림이 안정적으로 표현되지 않습니다. 단순한 Capsule Collider로 교체합니다.
     void ReplaceWheelColliders()
     {
+        // 교체 대상 바퀴 링크 이름 (URDF의 wheel_left_link / wheel_right_link)
         string[] wheelNames = { "wheel_left_link", "wheel_right_link" };
 
         foreach (string wheelName in wheelNames)
         {
+            // 자식 계층에서 해당 이름의 링크를 재귀 탐색
             Transform wheelTransform = FindChildRecursive(transform, wheelName);
-            if (wheelTransform == null) continue;
+            if (wheelTransform == null) continue; // 링크가 없으면 건너뜀
 
+            // 기존 Mesh Collider 자식들을 제거
             foreach (Transform child in wheelTransform)
             {
                 Collider col = child.GetComponent<Collider>();
@@ -449,42 +479,52 @@ public class TurtleBot3Setup : MonoBehaviour
                     DestroyImmediate(col);
             }
 
+            // 바퀴 링크에 Capsule Collider 추가 (원기둥형 충돌체)
             CapsuleCollider capsule = wheelTransform.gameObject.AddComponent<CapsuleCollider>();
-            capsule.radius = wheelRadius;
-            capsule.height = wheelWidth;
-            capsule.direction = 2;
-            capsule.center = Vector3.zero;
+            capsule.radius = wheelRadius;   // 반지름 = wheelRadius (0.033m)
+            capsule.height = wheelWidth;    // 길이 = wheelWidth (0.018m)
+            capsule.direction = 2;          // 2 = Z축 방향으로 세움 (바퀴 굴림 축)
+            capsule.center = Vector3.zero;  // 링크 중심에 배치
 
+            // 바퀴용 마찰 재질: 구르면서 미끄러지지 않도록 마찰을 높게 설정
             PhysicMaterial mat = new PhysicMaterial("WheelPhysMat");
-            mat.dynamicFriction = 0.8f;
-            mat.staticFriction = 0.8f;
-            mat.bounciness = 0f;
-            mat.frictionCombine = PhysicMaterialCombine.Maximum;
+            mat.dynamicFriction = 0.8f;  // 움직일 때(미끄러질 때) 마찰 계수
+            mat.staticFriction = 0.8f;   // 정지 상태에서 움직이기 시작할 때 마찰 계수
+            mat.bounciness = 0f;         // 반발력 0 (바닥에 튀지 않음)
+            mat.frictionCombine = PhysicMaterialCombine.Maximum; // 바닥과의 마찰은 둘 중 큰 값을 사용
             capsule.material = mat;
         }
 
+        // 캐스터(뒤쪽 보조바퀴)의 Mesh Collider 제거 — 불필요한 충돌면이 굴림을 방해하지 않도록
         Transform casterTransform = FindChildRecursive(transform, "caster_back_link");
         if (casterTransform != null)
             foreach (Transform child in casterTransform)
             { Collider c = child.GetComponent<Collider>(); if (c != null) DestroyImmediate(c); }
 
+        // LiDAR(base_scan)의 Mesh Collider 제거 — 장애물 감지용이므로 충돌체가 필요 없음
         Transform baseScanTransform = FindChildRecursive(transform, "base_scan");
         if (baseScanTransform != null)
             foreach (Transform child in baseScanTransform)
             { Collider c = child.GetComponent<Collider>(); if (c != null) DestroyImmediate(c); }
     }
 
+    // 함수: 씬의 "Ground"(이름이 정확히 Ground인 Plane)에 물리 재질을 적용
+    // 이유: 바퀴와 바닥 사이의 마찰을 조절해 로봇이 미끄러지지 않고 안정적으로 굴러가게 함.
+    //       이름이 "Ground"가 아니거나 오브젝트가 없으면 아무 일도 하지 않고 종료합니다.
     void SetupGround()
     {
+        // 이름이 정확히 "Ground"인 오브젝트를 찾습니다.
         GameObject ground = GameObject.Find("Ground");
-        if (ground == null) return;
+        if (ground == null) return; // 없으면(바닥 미생성) 함수 종료 → 이 경우 로봇이 추락합니다!
 
+        // 바닥용 마찰 재질: 바퀴보다 낮은 마찰로 미끄러짐을 줄이고 굴림을 돕습니다.
         PhysicMaterial groundMat = new PhysicMaterial("GroundPhysMat");
-        groundMat.dynamicFriction = 0.4f;
-        groundMat.staticFriction = 0.4f;
-        groundMat.bounciness = 0f;
-        groundMat.frictionCombine = PhysicMaterialCombine.Average;
+        groundMat.dynamicFriction = 0.4f;  // 움직일 때 마찰
+        groundMat.staticFriction = 0.4f;   // 정지 마찰
+        groundMat.bounciness = 0f;         // 반발력 0
+        groundMat.frictionCombine = PhysicMaterialCombine.Average; // 바퀴와의 마찰은 평균값 사용
 
+        // Ground가 Mesh Collider면 그 재질을, 아니면 Box Collider의 재질을 교체
         MeshCollider mc = ground.GetComponent<MeshCollider>();
         if (mc != null)
         {
@@ -498,6 +538,8 @@ public class TurtleBot3Setup : MonoBehaviour
         }
     }
 
+    // 보조 함수: 오브젝트 계층을 재귀적으로 탐색해 주어진 이름의 Transform을 찾아 반환.
+    //            찾지 못하면 null을 반환. (바퀴/캐스터/LiDAR 링크를 이름으로 찾는 데 사용)
     Transform FindChildRecursive(Transform parent, string name)
     {
         foreach (Transform child in parent)
@@ -521,30 +563,56 @@ Project 창에서 **Assets** 폴더 우클릭 → **Create > C# Script** → 이
 ```csharp
 using UnityEngine;
 
+// ############################################################
+// # TurtleBot3Controller
+// # 역할: 키보드(WASD) 입력을 받아 Rigidbody 기반으로 로봇을 이동/회전시킵니다.
+// #       이동은 MovePosition, 회전은 MoveRotation으로 FixedUpdate에서 처리합니다.
+// ############################################################
 public class TurtleBot3Controller : MonoBehaviour
 {
-    [Header("이동 설정")]
+    // ---------- [이동 설정] ----------
+    // 전진/후진 속도(m/s). TurtleBot3 Burger 실측 최대 선속도 0.22 m/s.
+    // (MoveSpeed = 초당 이동 거리: 1이면 1m/s로 전진)
     public float moveSpeed = 0.22f;
+
+    // 회전 속도(deg/s). TurtleBot3 Burger 실측 최대 각속도 2.84 rad/s ≈ 162.7 deg/s를
+    // 각도 기준으로 환산한 값입니다. (RotationSpeed = 초당 회전 각도)
     public float rotationSpeed = 2.84f;
 
-    private Rigidbody rb;
+    private Rigidbody rb; // 물리 이동을 제어할 Rigidbody 참조
 
+    // Start: Play 시작 시 한 번 실행. 이 오브젝트의 Rigidbody를 가져옵니다.
+    // (TurtleBot3Setup이 Awake에서 Rigidbody를 추가하므로 반드시 그 이후에 실행됨)
     void Start()
     {
         rb = GetComponent<Rigidbody>();
     }
 
+    // FixedUpdate: 물리 엔진 스텝마다(기본 0.02초 간격) 호출.
+    //              MovePosition/MoveRotation은 물리 스텝 안에서만 동작하므로 여기서 처리합니다.
     void FixedUpdate()
     {
-        if (rb == null) return;
+        if (rb == null) return; // Rigidbody가 없으면 동작하지 않음 (설정 오류 방지)
 
+        // 입력값 받기
+        // Vertical   : W(앞)=+1, S(뒤)=-1  → 전진/후진
+        // Horizontal : D(오른쪽)=+1, A(왼쪽)=-1 → 좌/우 회전
         float moveInput = Input.GetAxis("Vertical");
         float turnInput = Input.GetAxis("Horizontal");
 
+        // 이동 벡터 계산: 로봇이 향하는 방향(transform.forward) × 입력 × 속도
+        // -1과 1 사이의 moveInput 덕분에 속도를 그대로 곱해 부드럽게 가감속됩니다.
         Vector3 moveDirection = transform.forward * moveInput * moveSpeed;
+
+        // 물리 이동: 현재 위치에서 이동량(속도 × 물리 스텝시간)만큼 다음 위치로 이동.
+        // Rigidbody 이동이므로 중력/충돌 영향은 물리엔진이 유지한 채 위치만 이동합니다.
         rb.MovePosition(rb.position + moveDirection * Time.fixedDeltaTime);
 
+        // 회전 각도 계산: 입력(turnInput) × 회전속도(deg/s) × 스텝시간(초) → 스텝당 회전 각도
         float rotation = turnInput * rotationSpeed * Mathf.Rad2Deg * Time.fixedDeltaTime;
+
+        // 물리 회전: 현재 회전에 Y축(좌우) 회전을 곱해 로봇을 돌립니다.
+        // Euler(0, rotation, 0) = X·Z축은 0, Y축(방위각)만 회전 = 욜로 회전(터틀봇처럼 제자리 회전)
         rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, rotation, 0f));
     }
 }
