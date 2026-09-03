@@ -24,6 +24,7 @@
 | **2단계** | [로봇 제작](02_robot_creation.md) | 프로젝트 생성, 3D 모델링, 물리 효과, 키보드 조작 | 약 90~120분 |
 | **3단계** | [Python 연결](03_python_connection.md) | TCP/IP 통신, Python 원격 제어 | 약 40~60분 |
 | **4단계** | [Unity AI 개발](04_Unity_AI_Development_Tutorial.md) | Unity AI 기능, 2D 게임, 자동차 시뮬레이션, ROS 연결 | 약 240~360분 |
+| **5단계** | [외부 로봇 모델 임포트](05_External_Robot_Model_Tutorial.md) | TurtleBot3 URDF 임포트, 물리 시스템 전환, 키보드 구동 | 약 60~90분 |
 
 ### Unreal Engine 튜토리얼
 | 단계 | 파일 | 내용 | 소요 시간 |
@@ -66,6 +67,13 @@
     +-- AI로 2D 슈팅게임 만들기
     +-- 3D 자동차 장난감 시뮬레이션
     +-- Unity와 ROS2 연결
+    |
+[5단계] 외부 로봇 모델 임포트
+    |
+    +-- TurtleBot3 URDF 파일 준비 및 수정
+    +-- URDF Importer 패키지 설치
+    +-- ArticulationBody → Rigidbody 전환
+    +-- 키보드로 바퀴 구동 (W/A/S/D)
 ```
 
 ### Unreal Engine 튜토리얼
@@ -134,6 +142,7 @@ unity_sim_example/
 ├── 02_robot_creation.md                   <- 2단계: 로봇 제작 (4바퀴)
 ├── 03_python_connection.md                <- 3단계: Python 연결
 ├── 04_Unity_AI_Development_Tutorial.md    <- 4단계: Unity AI 개발
+├── 05_External_Robot_Model_Tutorial.md    <- 5단계: 외부 로봇 모델 임포트
 └── UE/
     ├── 01_UE_Installation.md              <- 1단계: UE5 설치 및 기초
     ├── 02_UE_CPP_Robot_Tutorial.md        <- 2단계: C++ 기반 로봇 시뮬레이션
