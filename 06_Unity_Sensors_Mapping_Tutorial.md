@@ -42,8 +42,8 @@ TurtleBot3 Burger에 장착되는 실제 2D LiDAR는 제조 시기에 따라 **L
 
 | 버전 | 공식 문서 | 출시/교체 시기 | 특징 |
 |------|-----------|--------------|------|
-| **LDS-02** | https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/ | 2022년부터 LDS-01을 대체 | 측정 0.16 ~ 8m, 1°, 5Hz |
-| **LDS-03** | https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_03/ | 2025년부터 LDS-02를 대체 | 측정 0.05 ~ 12m, 0.9°, 10Hz |
+| **LDS-02** | [LDS-02](https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/) | 2022년부터 LDS-01을 대체 | 측정 0.16 ~ 8m, 1°, 5Hz |
+| **LDS-03** | [LDS-03](https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_03/) | 2025년부터 LDS-02를 대체 | 측정 0.05 ~ 12m, 0.9°, 10Hz |
 
 > 📎 ROBOTIS 공식 버전별 사양/데이터 패킷은 위 링크에서 확인할 수 있습니다.
 > - **LDS-02**: https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/
