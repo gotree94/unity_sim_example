@@ -9,8 +9,10 @@
 
 ---
 
+* Nvidia : Getting Started With Isaac Sim
 [01-building-a-simple-robot](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-sim/latest/building-your-first-robot-in-isaac-sim/01-building-a-simple-robot.html)
 
+* 
 [asset_structure](https://docs.isaacsim.omniverse.nvidia.com/latest/robot_setup/asset_structure.html)
 
 ---
