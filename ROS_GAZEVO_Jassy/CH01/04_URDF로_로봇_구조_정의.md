@@ -248,6 +248,7 @@ rviz2
 
 6. 설정을 합니다. TF를 볼 수 있습니다.
 
+![Add 버튼](../img/image74.bmp)  ![RobotModel 선택](../img/image75.bmp)
 
 > ※ 마우스 휠을 이용하여 그림을 확대할 수 있습니다. RViz2에서 격자 하나의 크기는 1m x 1m입니다.
 
@@ -282,11 +283,11 @@ rviz2
 
 8. RViz2에서 [Add] 버튼을 한 번 더 눌러줍니다.
 
-![Add 버튼](../img/image74.bmp)
+
 
 9. [RobotModel]을 선택하고, [OK] 버튼을 누릅니다.
 
-![RobotModel 선택](../img/image75.bmp)
+
 
 10. 설정을 합니다. RobotModel을 볼 수 있습니다.
 
