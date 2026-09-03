@@ -48,11 +48,13 @@ rviz2 -d /root/myros_sketch/view_bot.rviz
 ros2 run joint_state_publisher_gui joint_state_publisher_gui
 ```
 
+---
+
 ## 04_2 base_link 정의하기
 
 먼저 URDF 파일에 base_link를 정의합니다.
 
-> **base_link**는 로봇 모델에서 가장 기본이 되는 기준 링크로, 모든 다른 링크의 기준점 역할을 합니다. 차동 구동 로봇의 경우 일반적으로 양쪽 바퀴 축의 중간 지점을 base_link로 설정합니다.
+> **base_link**는 로봇 모델에서 가장 기본이 되는 기준 링크로, 모든 다른 링크의 기준점 역할을 합니다. <br> 차동 구동 로봇의 경우 일반적으로 양쪽 바퀴 축의 중간 지점을 base_link로 설정합니다.
 
 ### base_link 정의하기
 
@@ -84,7 +86,8 @@ xacro /root/myros_sketch/robot.urdf.xacro
 
 ### robot_state_publisher 실행하기
 
-robot_state_publisher는 URDF를 기반으로 조인트 상태를 받아 각 링크의 좌표 변환(TF)을 계산합니다.
+* 다음은 robot_state_publisher를 실행합니다. robot_state_publisher는 URDF를 기반으로 조인트 상태를 받아 각 링크의 좌표 변환(TF)을 계산합니다. 
+* 즉, URDF는 구조 정보를 제공하고, robot_state_publisher는 이 정보를 사용해 실시간 로봇 상태를 발행하는 역할을 합니다.
 
 1. 명령을 실행합니다.
 
@@ -95,8 +98,6 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 2. 그러면 다음과 같이 실행됩니다.
 
 ![문법 체크](../img/image65.bmp)
-
----
 
 ### robot_core_diffdrive.xacro 파일 포함하기
 
@@ -173,6 +174,8 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 ![재구동](../img/image67.bmp)
 
+URDF에서 base_link와 chassis_joint 요소를 정의하면 로봇 구조의 최상위 프레임과 차체 연결 방식이 명확하게 설정됩니다.
+
 1. 내용을 계속해서 추가합니다.
 
 **robot_core_diffdrive.xacro**
@@ -198,7 +201,8 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 ![N20 DC 모터 규격](../img/image68.bmp)
 
-모터의 높이는 10mm, 메인보드 PCB의 두께는 1.6mm입니다. 모터의 중심축으로부터 메인보드의 중심까지 5mm + 0.8mm = 5.8mm입니다.
+모터의 높이는 10mm, 메인보드 PCB의 두께는 1.6mm입니다. 모터의 중심축으로부터 메인보드의 중심까지 5mm + 0.8mm = 5.8mm입니다. 
+다음은 chassis_joint가 base_link로부터 z축으로 5.8mm 위쪽에 있음을 나타냅니다. 숫자의 단위는 m(미터)입니다.
 
 ```xml
 <origin xyz="0 0 0.0058" rpy="0 0 0"/>
@@ -207,6 +211,10 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 > ※ 참고로, 로봇의 앞쪽이 +x, 왼쪽이 +y입니다.
 
 2. URDF 파일을 저장한 후, 명령을 재구동하여 정상적으로 수행되는 것을 확인합니다.
+
+```
+ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /root/myros_sketch/robot.urdf.xacro)"
+```
 
 ### RViz2 실행하고 시각화 설정하기
 
@@ -220,23 +228,26 @@ rviz2
 
 ![RViz2 실행](../img/image69.bmp)
 
-> ※ rviz2 창을 윈도우 상에서 띄우기 위해, VcXsrv 프로그램이 백그라운드로 실행되고 있어야 합니다.
-
-2. RViz2 설정을 합니다.
+2. 다음과 같이 rvz2 프로그램이 실행됩니다.
 
 ![RViz2 초기 설정](../img/image70.bmp)
 
-3. 좌측 하단에서 [Add] 버튼을 찾아 클릭합니다.
+> ※ rviz2 창을 윈도우 상에서 띄우기 위해, VcXsrv 프로그램이 백그라운드로 실행되고 있어야 합니다.
+
+3. RViz2 설정을 합니다.
 
 ![Add 버튼](../img/image71.bmp)
 
-4. 스크롤바를 아래로 내려 [TF]를 선택하고, [OK] 버튼을 누릅니다.
+4. 좌측 하단에서 [Add] 버튼을 찾아 클릭합니다.
 
 ![TF 선택](../img/image72.bmp)
 
-5. 설정을 합니다. TF를 볼 수 있습니다.
+5. 스크롤바를 아래로 내려 [TF]를 선택하고, [OK] 버튼을 누릅니다.
 
 ![TF 시각화](../img/image73.bmp)
+
+6. 설정을 합니다. TF를 볼 수 있습니다.
+
 
 > ※ 마우스 휠을 이용하여 그림을 확대할 수 있습니다. RViz2에서 격자 하나의 크기는 1m x 1m입니다.
 
