@@ -161,6 +161,8 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 ## 14. 다음과 같은 순서로 myros_sketch 폴더 아래 view_bot.rviz로 저장합니다.
 
+![](image81.bmp)
+
 ## 15. rviz2 프로그램을 종료한 후, ➁ 창에서 다음과 같이 옵션을 주어 재구동해 봅니다.
 
 ```bash
@@ -170,5 +172,5 @@ rviz2 -d /root/myros_sketch/view_bot.rviz
 ## 16. 다음과 같이 바로 전에 저장했던 설정 상태로 뜨는 것을 확인합니다.
 
 
-
+![](image79.bmp)
 
