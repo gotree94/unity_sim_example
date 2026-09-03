@@ -4,7 +4,7 @@
 
 > **chassis_joint**는 base_link와 차체(chassis)를 연결하는 관절로, 두 링크 간의 상대적 위치와 자세 관계를 정의합니다.
 
-<img src="../img/image67.bmp" width="30%">
+<img src="../img/image67.bmp" width="50%">
 
 URDF에서 base_link와 chassis_joint 요소를 정의하면 로봇 구조의 최상위 프레임과 차체 연결 방식이 명확하게 설정됩니다.
 
