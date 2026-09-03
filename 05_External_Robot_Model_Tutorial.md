@@ -404,19 +404,26 @@ public class TurtleBot3Setup : MonoBehaviour
         SetupRigidbody();           // 2) 단일 Rigidbody 추가/설정
         ReplaceWheelColliders();    // 3) 바퀴/Caster/LiDAR 충돌체 정리
         SetupGround();              // 4) 바닥 물리 재질 적용
+        AutoAttachLidarSensor();    // 5) base_scan에 LidarSensor 없으면 자동 부착
         Debug.Log("TurtleBot3 Setup 완료! Rigidbody 방식으로 전환됨.");
     }
 
     // 함수: ArticulationBody(관절 물리)를 전부 제거
     // 이유: ArticulationBody는 다중 링크(관절) 기반 물리로 바퀴 구동/Ground 충돌이
     //       불안정합니다. Rigidbody 단일 물리로 바꿔야 MovePosition 조작이 안정적입니다.
-    // 중요: UrdfJoint/UrdfInertial 같은 Urdf 컴포넌트가 ArticulationBody를 "참조"하고 있어
-    //       ArticulationBody만 먼저 지우면 "depends on it" 오류로 실패합니다.
-    //       그래서 ① Urdf 스크립트를 먼저 제거 → ② ArticulationBody를 제거 순서로 진행합니다.
+    // 중요: UrdfJoint/UrdfInertial/Controller/JointControl 같은 URDF Importer 컴포넌트가
+    //       ArticulationBody를 "참조"하고 있어, ArticulationBody만 먼저 지우면
+    //       "depends on it" 오류(또는 Start()에서 IndexOutOfRange)가 발생합니다.
+    //       그래서 ① URDF Importer 스크립트를 먼저 제거 → ② ArticulationBody를 제거 순서로 진행합니다.
     void RemoveArticulationBodies()
     {
-        // ① Urdf 스크립트(UrdfJoint, UrdfInertial, UrdfVisual 등)를 먼저 제거.
-        //    Urdf<->Urdf 간에도 서로 참조가 있을 수 있어, 남는 것이 없을 때까지 반복 제거.
+        // ① URDF Importer 스크립트를 먼저 제거:
+        //    - 클래스 이름에 "Urdf"가 포함된 컴포넌트 (UrdfJoint, UrdfInertial, UrdfVisual ...)
+        //    - 네임스페이스가 "Unity.Robotics.UrdfImporter"로 시작하는 컴포넌트
+        //      (Controller, FKRobot 등. 네임스페이스에 Controller가 있어 이름 검사로는 못 걸러냄)
+        //    - JointControl (네임스페이스가 없어 이름으로만 판별)
+        //    위 컴포넌트들은 ArticulationBody를 참조하므로 남겨두면 에러가 납니다.
+        //    컴포넌트 간 상호 참조가 있을 수 있어, 남는 것이 없을 때까지 반복 제거.
         bool found = true;
         while (found)
         {
@@ -424,7 +431,18 @@ public class TurtleBot3Setup : MonoBehaviour
             foreach (var comp in GetComponentsInChildren<Component>(true))
             {
                 if (comp == null) continue;
-                if (comp.GetType().Name.Contains("Urdf")) // 클래스 이름에 "Urdf"가 포함된 컴포넌트
+                System.Type t = comp.GetType();
+                string typeName = t.Name;
+                string ns = (t.Namespace != null) ? t.Namespace : "";
+
+                // 사용자가 만든 TurtleBot3Controller/TurtleBot3Setup은 네임스페이스가 없고
+                // 이름도 위 패턴과 겹치지 않으므로 지워지지 않습니다 (안전).
+                bool isUrdfImporter =
+                    typeName.Contains("Urdf") ||
+                    ns.StartsWith("Unity.Robotics.UrdfImporter") ||
+                    typeName == "JointControl";
+
+                if (isUrdfImporter)
                 {
                     DestroyImmediate(comp);
                     found = true;
@@ -538,6 +556,29 @@ public class TurtleBot3Setup : MonoBehaviour
         }
     }
 
+    // 함수: base_scan에 LidarSensor(2D LiDAR)를 아직 부착하지 않았다면 자동으로 추가
+    // 이유: 06단계에서 LiDAR 시각화(녹색 레이저 링)를 보려면 base_scan 오브젝트에
+    //       LidarSensor 컴포넌트가 있어야 합니다. 수동으로 Add Component를 빼먹어도
+    //       Play 시 자동으로 붙도록 해, 항상 레이저가 동작하게 합니다.
+    // 참고: 이미 직접 추가해 둔 경우 중복하지 않도록 GetComponent로 먼저 확인합니다.
+    void AutoAttachLidarSensor()
+    {
+        Transform baseScanTransform = FindChildRecursive(transform, "base_scan");
+        if (baseScanTransform == null) // base_scan 링크가 없으면 부착 불가 → 종료
+        {
+            Debug.LogWarning("[TurtleBot3Setup] base_scan 링크를 찾지 못해 LidarSensor를 부착하지 않았습니다.");
+            return;
+        }
+
+        // 이미 LidarSensor가 있으면 중복 부착하지 않음
+        if (baseScanTransform.GetComponent<LidarSensor>() != null)
+            return;
+
+        // base_scan에 LidarSensor 컴포넌트 자동 추가
+        baseScanTransform.gameObject.AddComponent<LidarSensor>();
+        Debug.Log($"[TurtleBot3Setup] base_scan에 LidarSensor 자동 부착 완료.");
+    }
+
     // 보조 함수: 오브젝트 계층을 재귀적으로 탐색해 주어진 이름의 Transform을 찾아 반환.
     //            찾지 못하면 null을 반환. (바퀴/캐스터/LiDAR 링크를 이름으로 찾는 데 사용)
     Transform FindChildRecursive(Transform parent, string name)
@@ -637,6 +678,7 @@ Play를 눌러보세요. TurtleBot3Setup이 자동으로 다음을 수행합니�
 | 바퀴 Collider 교체 | Mesh Collider → Capsule Collider (Direction=Z) |
 | 캐스터/LiDAR Collider 제거 | 불필요한 충돌체 제거 |
 | Ground에 Physic Material 적용 | 마찰력 0.4, Average 합산 |
+| LidarSensor 자동 부착 | base_scan에 없으면 06단계용 LiDAR 컴포넌트를 자동 추가 |
 
 > 💡 **참고**: Setup은 Play 시 `Awake()`에서 자동 실행됩니다.
 
@@ -734,8 +776,11 @@ Hierarchy에서 **Main Camera**를 선택하고 Inspector의 Transform에서:
 | Rigidbody의 Is Kinematic이 체크되어 있는지 | 체크 해제 필요 |
 | Game View를 클릭했는지 | 키보드 입력은 Game View 포커스 필요 |
 | Console에 `Can't remove ArticulationBody because ... depends on it` 오류가 있는지 | ★ **Urdf 스크립트가 ArticulationBody를 참조하고 있어 제거가 실패**한 것입니다. ArticulationBody가 남아 있으면 Rigidbody 이동과 충돌해 로봇이 안 움직입니다. → `TurtleBot3Setup.cs`의 `RemoveArticulationBodies()`가 **Urdf 스크립트 먼저** 제거하도록 수정된 코드인지 확인 (4-1 참고) |
+| Play 직후 `IndexOutOfRangeException ... Controller.StoreJointColors` 오류가 있는지 | ★ URDF Importer의 **`Controller`/`JointControl`** 컴포넌트가 남아 있기 때문입니다. ArticulationBody를 제거한 뒤에도 이들이 남아 `Controller.Start()`가 빈 배열을 참조해 에러가 납니다. → 수정된 `RemoveArticulationBodies()`가 **네임스페이스 `Unity.Robotics.UrdfImporter`의 컴포넌트와 `JointControl`** 을 함께 제거하는지 확인 (4-1 참고) |
 
 > ⚠️ **핵심 원인**: `RemoveArticulationBodies()`에서 ArticulationBody를 **먼저** 지우려 하면 Unity가 "Can't remove ArticulationBody because UrdfInertial/UrdfJointX depends on it" 오류를 냅니다. ArticulationBody가 실제로 제거되지 않아 **Rigidbody와 ArticulationBody가 공존**하고, 이 상태에선 `MovePosition`이 먹히지 않아 로봇이 움직이지 않습니다. 반드시 **Urdf 참조 스크립트를 먼저** 제거한 뒤 ArticulationBody를 제거해야 합니다.
+>
+> ⚠️ **또 하나의 원인**: ArticulationBody를 정상 제거했더라도 URDF Importer의 **`Controller` / `FKRobot` / `JointControl`** 컴포넌트가 남아 있으면, `Controller.Start()`(PackageCache의 `Controller.cs:49`)가 이미 비워진 ArticulationBody 배열을 참조하며 `IndexOutOfRangeException`(StoreJointColors)을 냅니다. 따라서 제거 조건은 **클래스 이름 "Urdf" 포함**뿐 아니라 **네임스페이스 `Unity.Robotics.UrdfImporter`로 시작**하거나 **이름이 `JointControl`** 인 컴포넌트까지 포함해야 합니다.
 
 ### 문제 4: 로봇이 떨어지지 않고 공중에 떠있음
 

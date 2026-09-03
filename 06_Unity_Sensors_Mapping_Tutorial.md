@@ -42,8 +42,8 @@ TurtleBot3 Burger에 장착되는 실제 2D LiDAR는 제조 시기에 따라 **L
 
 | 버전 | 공식 문서 | 출시/교체 시기 | 특징 |
 |------|-----------|--------------|------|
-| **LDS-02** | [LDS-02](https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/) | 2022년부터 LDS-01을 대체 | 측정 0.16 ~ 8m, 1°, 5Hz |
-| **LDS-03** | [LDS-03](https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_03/) | 2025년부터 LDS-02를 대체 | 측정 0.05 ~ 12m, 0.9°, 10Hz |
+| **LDS-02** | https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/ | 2022년부터 LDS-01을 대체 | 측정 0.16 ~ 8m, 1°, 5Hz |
+| **LDS-03** | https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_03/ | 2025년부터 LDS-02를 대체 | 측정 0.05 ~ 12m, 0.9°, 10Hz |
 
 > 📎 ROBOTIS 공식 버전별 사양/데이터 패킷은 위 링크에서 확인할 수 있습니다.
 > - **LDS-02**: https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/
@@ -233,9 +233,15 @@ public class LidarSensor : MonoBehaviour
 
 ### 2-3. 스크립트 연결
 
+> ✅ **자동 연결**: `TurtleBot3Setup.cs`(05단계)가 `Awake()`에서 base_scan을 찾아 `LidarSensor`가 없으면 **자동으로 부착**합니다. 별도로 Add Component를 하지 않아도 됩니다.
+
+수동으로 직접 붙이고 싶다면 다음 순서로 합니다:
+
 1. Hierarchy에서 **base_scan** 선택
 2. **Add Component > LidarSensor** 추가
 3. 값 확인 (기본값이 **LDS-02 사양**. LDS-03 하드웨어를 쓰면 1-1의 사양표를 참고해 rayCount/rangeMax/scanRate 조정)
+
+> 💡 **중복 방지**: 자동 부착은 이미 직접 추가해 둔 LidarSensor가 있으면 다시 붙이지 않습니다.
 
 ### 2-4. Play 테스트 (레이저 확인)
 
