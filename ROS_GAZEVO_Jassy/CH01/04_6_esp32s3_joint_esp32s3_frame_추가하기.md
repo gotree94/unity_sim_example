@@ -34,7 +34,13 @@ ESP32S3DevKitC의 중심은 메인 보드의 중심으로부터 -X 방향으로 
 
 ## 2. URDF 파일을 저장한 후, 명령을 재구동합니다.
 
+```
+ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /root/myros_sketch/robot.urdf.xacro)"
+```
+
 ## 3. RViz2 좌측 하단에 있는 reset 버튼을 누릅니다.
+
+![ESP32S3 시각화](../img/image83.bmp)
 
 ## 4. 표시되는 것을 확인합니다.
 
