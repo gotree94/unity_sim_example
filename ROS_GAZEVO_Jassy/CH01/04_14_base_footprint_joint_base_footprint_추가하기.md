@@ -43,5 +43,5 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 ## 6. 표시되는 것을 확인합니다.
 
-![Collision 시각화](../img/image115.bmp)
+![Collision 시각화](../img/image112.bmp)
 
