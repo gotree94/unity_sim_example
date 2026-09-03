@@ -1,4 +1,6 @@
-## 04_7 imu_joint, imu_link 추가하기
+## 04_8 rpi_base_joint, rpi_base 추가하기
+
+rpi_base에는 라즈베리파이 5를 장착합니다.
 
 1. 내용을 계속해서 추가합니다.
 
@@ -7,28 +9,24 @@
 ```xml
     ...
 
-    <!-- IMU -->
+    <!-- RPI BASE -->
 
-    <joint name="imu_joint" type="fixed">
+    <joint name="rpi_base_joint" type="fixed">
         <parent link="chassis"/>
-        <child link="imu_link"/>
-        <origin xyz="0 0 0.008" rpy="0 0 0"/>
+        <child link="rpi_base"/>
+        <origin xyz="0 0 0.0566" rpy="0 0 0"/>
     </joint>
-    <link name="imu_link">
+    <link name="rpi_base">
         <visual>
-            <geometry>
-                <box size="0.0155 0.02 0.0126"/>
+            <geometry>                
+                <box size="0.12 0.12 0.0016"/>
             </geometry>
-            <material name="green"/>
+            <material name="white"/>
         </visual>
     </link>
 
 </robot>
 ```
-
-![IMU 규격](../img/image97.bmp)
-
-이 책에서 사용하는 IMU는 MPU6050으로 가로 세로 크기는 다음과 같고, 높이는 1.26cm입니다. MPU6050의 중심은 메인 보드의 중심과 같습니다.
 
 2. URDF 파일을 저장한 후, 명령을 재구동합니다.
 
@@ -36,5 +34,4 @@
 
 4. 표시되는 것을 확인합니다.
 
-![IMU 시각화](../img/image98.bmp)
-
+![rpi_base 시각화](../img/image99.bmp)
