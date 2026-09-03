@@ -1,8 +1,8 @@
-## 04_15 collision 태그 추가하기
+# 04_15 collision 태그 추가하기
 
 collision 태그는 링크의 충돌 영역을 정의합니다. Gazebo 시뮬레이터에서는 이 정보를 이용하여 링크 간의 충돌 여부를 계산합니다.
 
-1. 예제를 수정합니다.
+## 1. 예제를 수정합니다.
 
 **robot_core_diffdrive.xacro** (전체 파일)
 
@@ -312,15 +312,21 @@ collision 태그는 링크의 충돌 영역을 정의합니다. Gazebo 시뮬레
 </robot>
 ```
 
-2. URDF 파일을 저장한 후, 명령을 재구동합니다.
+## 2. URDF 파일을 저장한 후, 명령을 재구동합니다.
 
-3. RViz2 좌측 하단에 있는 reset 버튼을 누릅니다.
+```
+ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /root/myros_sketch/robot.urdf.xacro)"
+```
 
-4. RobotModel에서 Visual Enabled 항목을 언체크하고, Collision Enabled 항목을 체크해 봅니다.
+## 3. RViz2 좌측 하단에 있는 reset 버튼을 누릅니다.
 
-![Collision 활성화](../img/image110.bmp)
+![Collision 활성화](../img/image83.bmp)
 
-5. 표시되는 것을 확인합니다.
+## 4. RobotModel에서 Visual Enabled 항목을 언체크하고, Collision Enabled 항목을 체크해 봅니다.
 
-![Collision 시각화](../img/image111.bmp)
+![Collision 활성화](../img/image111.bmp)
+
+## 5. 표시되는 것을 확인합니다.
+
+![Collision 시각화](../img/image113.bmp)
 
