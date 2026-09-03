@@ -291,15 +291,17 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 10. 다음과 같이 [Add] 버튼을 한 번 더 눌러줍니다.
 
-![Save Config As](../img/image77.bmp)
+![]((../img/image72.bmp)
 
 > ※ base_link는 로봇의 기준이 되는 가장 기본 링크로, chassis는 로봇의 본체를 나타내는 링크로, 이동 로봇에서는 바퀴와 센서가 장착되는 중심 구조입니다.
 
 11. 다음과 같이 스크롤바를 아래로 내려 [RobotModel]을 선택하고, [OK] 버튼을 누릅니다.
 
-![rviz 파일 저장](../img/image78.bmp)
+![Save Config As](../img/image77.bmp)
 
 12. 다음 순서로 설정을 해 줍니다. 그러면 오른쪽과 같이 RobotModel을 볼 수 있습니다.
+
+![rviz 파일 저장](../img/image78.bmp) ![rviz2 재구동](../img/image79.bmp)
 
 > ※ ➋에서 설정한 /robot_description 토픽은 다음 명령에 빨갛게 표시된 매개변수입니다.
 
@@ -311,12 +313,21 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 
 13. rviz2 프로그램을 종료한 후, 옵션을 주어 재구동해 봅니다.
+13. 다음과 같이 [File]--[Save Config As] 메뉴를 선택합니다.
+
+![메인보드 크기](../img/image80.bmp)
+
+
+14. 다음과 같은 순서로 myros_sketch 폴더 아래 view_bot.rviz로 저장합니다.
+
+15. rviz2 프로그램을 종료한 후, ➁ 창에서 다음과 같이 옵션을 주어 재구동해 봅니다.
 
 ```bash
 rviz2 -d /root/myros_sketch/view_bot.rviz
 ```
 
-![rviz2 재구동](../img/image79.bmp)
+
+
 
 ## 04_4 구동축 및 바퀴 추가하기
 
@@ -350,7 +361,7 @@ rviz2 -d /root/myros_sketch/view_bot.rviz
 
 이 책에서 사용하는 메인 보드의 크기는 가로, 세로 15cm입니다.
 
-![메인보드 크기](../img/image80.bmp)
+
 
 바퀴의 중심까지의 거리는 9.07cm입니다.
 
