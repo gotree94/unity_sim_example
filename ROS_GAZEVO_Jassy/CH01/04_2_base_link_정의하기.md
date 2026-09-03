@@ -5,7 +5,9 @@
 > **base_link**는 로봇 모델에서 가장 기본이 되는 기준 링크로, 모든 다른 링크의 기준점 역할을 합니다. <br> 차동 구동 로봇의 경우 일반적으로 양쪽 바퀴 축의 중간 지점을 base_link로 설정합니다.
 
 <br>
+
 ---
+
 <br>
 
 ## base_link 정의하기
@@ -38,7 +40,9 @@ xacro /root/myros_sketch/robot.urdf.xacro
 
 
 <br>
+
 ---
+
 <br>
 
 ## robot_state_publisher 실행하기
@@ -58,7 +62,9 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 
 <br>
+
 ---
+
 <br>
 
 ## robot_core_diffdrive.xacro 파일 포함하기
