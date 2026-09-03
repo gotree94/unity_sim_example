@@ -392,13 +392,30 @@ public class TurtleBot3Setup : MonoBehaviour
 
     void RemoveArticulationBodies()
     {
-        ArticulationBody[] abs = GetComponentsInChildren<ArticulationBody>();
+        // 1) Urdf 스크립트 컴포넌트를 먼저 제거. UrdfJoint/UrdfInertial 등은
+        //    ArticulationBody를 참조하고 있어서, ArticulationBody를 먼저 지우면
+        //    "Can't remove ... because ... depends on it" 오류가 발생합니다.
+        //    Urdf<->Urdf 간 참조가 사라질 때까지 반복해서 제거합니다.
+        bool found = true;
+        while (found)
+        {
+            found = false;
+            foreach (var comp in GetComponentsInChildren<Component>(true))
+            {
+                if (comp == null) continue;
+                if (comp.GetType().Name.Contains("Urdf"))
+                {
+                    DestroyImmediate(comp);
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        // 2) 참조가 제거된 후 ArticulationBody를 안전하게 제거.
+        ArticulationBody[] abs = GetComponentsInChildren<ArticulationBody>(true);
         foreach (var ab in abs)
             DestroyImmediate(ab);
-
-        foreach (var comp in GetComponentsInChildren<Component>())
-            if (comp.GetType().Name.Contains("UrdfJoint"))
-                DestroyImmediate(comp);
 
         Debug.Log($"ArticulationBody/UrdfJoint 제거 완료: {abs.Length}개");
     }
@@ -546,8 +563,8 @@ Play를 눌러보세요. TurtleBot3Setup이 자동으로 다음을 수행합니�
 
 | 작업 | 설명 |
 |------|------|
-| ArticulationBody 모두 제거 | base_footprint, base_link, 바퀴 등 |
-| UrdfJoint 모두 제거 | Controller, JointControl 등 |
+| Urdf 스크립트 먼저 제거 | UrdfInertial, UrdfJoint(UrdfJointFixed/Continuous) 등을 반복 제거 |
+| ArticulationBody 모두 제거 | base_footprint, base_link, 바퀴 등 (Urdf 참조 제거 후 안전하게) |
 | Rigidbody 추가 | turtlebot3_burger에 1개 추가 |
 | 바퀴 Collider 교체 | Mesh Collider → Capsule Collider (Direction=Z) |
 | 캐스터/LiDAR Collider 제거 | 불필요한 충돌체 제거 |
@@ -594,13 +611,21 @@ Play를 눌러보세요. TurtleBot3Setup이 자동으로 다음을 수행합니�
 
 ### 5-2. 카메라 위치 조정
 
-Hierarchy에서 **Main Camera**를 선택하고 Inspector에서:
+기본 `Main Camera`는 로봇에서 멀리 떨어져 있어 로봇이 화면에 너무 작게 보입니다. **Position**을 아래 값으로 바꿔 로봇이 화면을 알맞게 채우도록 합니다.
+
+Hierarchy에서 **Main Camera**를 선택하고 Inspector의 Transform에서:
 
 | 설정 | 값 | 설명 |
 |------|-----|------|
-| **Position X** | `0` | 중앙 정렬 |
-| **Position Y** | `0.2` | 약간 위에서 내려다보기 |
-| **Position Z** | `-0.7` | 로봇 앞쪽에서 바라보기 |
+| **Position X** | `0` | 중앙 정렬 (로봇의 좌우 가운데) |
+| **Position Y** | `0.5` | 카메라 높이. 로봇(높이 약 0.18m)보다 약간 위에서 내려다보는 각도 |
+| **Position Z** | `-1.5` | 로봇 앞쪽 1.5m 거리에서 정면을 바라봄. **값이 작을수록(0에 가까울수록) 로봇이 크게 보임** |
+
+> 💡 **왜 이 값인가?** 로봇(터틀봇 버거)의 크기는 약 0.14m(폭) × 0.18m(높이)로 매우 작습니다. 기본 카메라 위치 `(0, 1, -10)`에서는 로봇이 점처럼 보이므로, **Y=0.5**로 로봇 높이 근처에, **Z=-1.5**로 충분히 가까이 당겨 화면 비율에 맞게 배치합니다.
+>
+> 로봇이 너무 크게/작게 보이면 **Z 값을 조절**합니다: `-1`이면 더 작게, `-2`면 더 크게 보입니다.
+
+> ⚠️ **카메라 회전(Rotation)**: 기본 카메라 회전 `(X=0, Y=0, Z=0)`을 유지하세요. 카메라가 정면(Z- 방향)을 향해 로봇을 바라보도록 합니다.
 
 ### 5-3. 동작 확인 포인트
 
@@ -631,6 +656,7 @@ Hierarchy에서 **Main Camera**를 선택하고 Inspector에서:
 | TurtleBot3Setup 스크립트가 turtlebot3_burger에 연결되었는지 | Add Component에서 확인 |
 | Rigidbody의 Use Gravity가 체크되어 있는지 | Play 중 Inspector에서 확인 |
 | Ground에 Collider가 있는지 | Ground 선택 → Inspector에서 확인 (Plane은 기본 MeshCollider 있음) |
+| Console에 `Can't remove ArticulationBody ... depends on it` 오류가 있는지 | ArticulationBody가 남아도 바닥 충돌이 어긋나 떨어질 수 있음. 문제 3 참고 → `RemoveArticulationBodies()` 순서(Urdf 먼저) 확인 |
 
 ### 문제 3: 바퀴가 안 돌아감 (로봇이 안 움직임)
 
@@ -639,6 +665,9 @@ Hierarchy에서 **Main Camera**를 선택하고 Inspector에서:
 | TurtleBot3Controller 스크립트가 연결되었는지 | turtlebot3_burger에 있는지 확인 |
 | Rigidbody의 Is Kinematic이 체크되어 있는지 | 체크 해제 필요 |
 | Game View를 클릭했는지 | 키보드 입력은 Game View 포커스 필요 |
+| Console에 `Can't remove ArticulationBody because ... depends on it` 오류가 있는지 | ★ **Urdf 스크립트가 ArticulationBody를 참조하고 있어 제거가 실패**한 것입니다. ArticulationBody가 남아 있으면 Rigidbody 이동과 충돌해 로봇이 안 움직입니다. → `TurtleBot3Setup.cs`의 `RemoveArticulationBodies()`가 **Urdf 스크립트 먼저** 제거하도록 수정된 코드인지 확인 (4-1 참고) |
+
+> ⚠️ **핵심 원인**: `RemoveArticulationBodies()`에서 ArticulationBody를 **먼저** 지우려 하면 Unity가 "Can't remove ArticulationBody because UrdfInertial/UrdfJointX depends on it" 오류를 냅니다. ArticulationBody가 실제로 제거되지 않아 **Rigidbody와 ArticulationBody가 공존**하고, 이 상태에선 `MovePosition`이 먹히지 않아 로봇이 움직이지 않습니다. 반드시 **Urdf 참조 스크립트를 먼저** 제거한 뒤 ArticulationBody를 제거해야 합니다.
 
 ### 문제 4: 로봇이 떨어지지 않고 공중에 떠있음
 
