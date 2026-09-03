@@ -1,4 +1,4 @@
-#  TurtleBot3 URDF 임포트 가이드
+# 6단계-1: TurtleBot3 URDF 임포트 가이드
 
 > **목적**: TurtleBot3 Burger 모델을 Unity에 안정적으로 가져와서 구동까지 완성  
 > **소요 시간**: 약 60~90분  
@@ -559,6 +559,22 @@ Play를 눌러보세요. TurtleBot3Setup이 자동으로 다음을 수행합니�
 
 ## 5단계: Play 테스트
 
+### 5-0. 사전 준비: Ground(바닥) 생성 ★중요★
+
+> ⚠️ **이 단계를 건너뛰면 로봇이 바닥으로 떨어져 화면 밖으로 사라집니다!**
+
+`TurtleBot3Setup.SetupGround()`는 `GameObject.Find("Ground")`로 바닥을 찾습니다. **씬에 `Ground`라는 이름의 오브젝트가 없으면** 중력(`useGravity = true`)이 적용된 로봇이 바닥 없이 계속 떨어져서 사라집니다.
+
+1. Hierarchy 우클릭 → **3D Object > Plane** 선택
+2. 이름을 **`Ground`** 로 변경 (기본 이름 "Plane"에서 반드시 변경)
+3. Inspector에서 기본값 유지:
+   - **Position**: `(0, 0, 0)`
+   - **Scale**: `(1, 1, 1)` → 약 10m × 10m 바닥
+
+> 💡 **이름 규칙**: `SetupGround()`는 이름이 정확히 **"Ground"** 인 오브젝트만 찾습니다. 다르면 아무 효과가 없습니다.
+
+> ✅ **확인**: Play 전에 Scene 뷰에서 로봇 아래에 평평한 회색/흰색 바닥이 보이는지 확인하세요.
+
 ### 5-1. 실행
 
 1. Hierarchy에서 **turtlebot3_burger**를 선택하고 Inspector에서 다음 2개가 있는지 확인:
@@ -607,13 +623,14 @@ Hierarchy에서 **Main Camera**를 선택하고 Inspector에서:
 | URDF 파일에 `package://`가 남아있는지 | `meshes/...`로 모두 변경 |
 | meshes 폴더가 URDF 파일과 같은 위치에 있는지 | `Assets/URDF/meshes/` 확인 |
 
-### 문제 2: 로봇이 바닥으로 떨어짐
+### 문제 2: 로봇이 바닥으로 떨어짐 (가장 흔한 원인)
 
 | 확인 | 해결 |
 |------|------|
+| **씬에 `Ground` 오브젝트가 있는지 첫 확인!** | Hierarchy에서 "Ground" (Plane) 확인, 없으면 5-0에서 생성 |
 | TurtleBot3Setup 스크립트가 turtlebot3_burger에 연결되었는지 | Add Component에서 확인 |
 | Rigidbody의 Use Gravity가 체크되어 있는지 | Play 중 Inspector에서 확인 |
-| Ground에 Collider가 있는지 | Ground 선택 → Inspector에서 확인 |
+| Ground에 Collider가 있는지 | Ground 선택 → Inspector에서 확인 (Plane은 기본 MeshCollider 있음) |
 
 ### 문제 3: 바퀴가 안 돌아감 (로봇이 안 움직임)
 
@@ -644,6 +661,12 @@ Assets\
       sensors\lds.stl
   TurtleBot3Setup.cs       ← 자동 설정 (Play 시 ArticulationBody 제거 + Rigidbody 추가)
   TurtleBot3Controller.cs  ← 이동 (MovePosition/MoveRotation)
+
+[Scene 오브젝트]
+  Main Camera
+  Directional Light
+  Ground                  ← ★ 필수 (Plane, 이름 "Ground")
+  turtlebot3_burger       ← URDF 임포트 결과 + TurtleBot3Setup/TurtleBot3Controller
 ```
 
 ---
