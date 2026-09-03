@@ -9,13 +9,9 @@
 
 ---
 
-## NVIDIA 관련 문서
+[01-building-a-simple-robot](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-sim/latest/building-your-first-robot-in-isaac-sim/01-building-a-simple-robot.html)
 
-* Nvidia : Getting Started With Isaac Sim
-  - [01-building-a-simple-robot](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-sim/latest/building-your-first-robot-in-isaac-sim/01-building-a-simple-robot.html)
-
-* Isaac Sim Documentation
-  - [asset_structure](https://docs.isaacsim.omniverse.nvidia.com/latest/robot_setup/asset_structure.html)
+[asset_structure](https://docs.isaacsim.omniverse.nvidia.com/latest/robot_setup/asset_structure.html)
 
 ---
 
@@ -29,6 +25,8 @@
 | **3단계** | [Python 연결](03_python_connection.md) | TCP/IP 통신, Python 원격 제어 | 약 40~60분 |
 | **4단계** | [Unity AI 개발](04_Unity_AI_Development_Tutorial.md) | Unity AI 기능, 2D 게임, 자동차 시뮬레이션, ROS 연결 | 약 240~360분 |
 | **5단계** | [외부 로봇 모델 임포트](05_External_Robot_Model_Tutorial.md) | TurtleBot3 URDF 임포트, 물리 시스템 전환, 키보드 구동 | 약 60~90분 |
+| **6단계** | [Unity 센서 시뮬레이션](06_Unity_Sensors_Mapping_Tutorial.md) | LiDAR, 장애물/맵핑, 오도메트리, IMU | 약 180~240분 |
+| **7단계** | [자율주행 최종 프로젝트](07_Autonomous_Driving_Tutorial.md) | 환경 구성, ROS 연동, 학습 데이터, AI 학습, 자율주행 완성 | 약 480~720분 |
 
 ### Unreal Engine 튜토리얼
 | 단계 | 파일 | 내용 | 소요 시간 |
@@ -78,6 +76,21 @@
     +-- URDF Importer 패키지 설치
     +-- ArticulationBody → Rigidbody 전환
     +-- 키보드로 바퀴 구동 (W/A/S/D)
+    |
+[6단계] Unity 센서 시뮬레이션
+    |
+    +-- LiDAR: 회전 레이저 발사 + 360° 거리 측정
+    +-- 장애물 추가 및 2D 점유격자 맵 그리기
+    +-- 오도메트리: 바퀴/위치 기반 위치·방향 계산
+    +-- IMU: 각속도·가속도 센서값 생성
+    |
+[7단계] 자율주행 최종 프로젝트
+    |
+    +-- 센서 사양에 맞는 환경 구성 + 랜덤 장애물 생성
+    +-- ROS/TCP 연동: 센서 데이터 `/scan`·`/odom`·`/imu` 외부 전송
+    +-- 학습 데이터 생성 (상태/행동/보상)
+    +-- AI 학습: 강화학습(DDQN) 자율주행 정책
+    +-- 최종: 시뮬레이션 환경에서 자율주행 완성
 ```
 
 ### Unreal Engine 튜토리얼
@@ -147,6 +160,8 @@ unity_sim_example/
 ├── 03_python_connection.md                <- 3단계: Python 연결
 ├── 04_Unity_AI_Development_Tutorial.md    <- 4단계: Unity AI 개발
 ├── 05_External_Robot_Model_Tutorial.md    <- 5단계: 외부 로봇 모델 임포트
+├── 06_Unity_Sensors_Mapping_Tutorial.md   <- 6단계: 센서 시뮬레이션 (LiDAR/맵/오도/IMU)
+├── 07_Autonomous_Driving_Tutorial.md      <- 7단계: 자율주행 (환경/ROS/데이터/학습/주행)
 └── UE/
     ├── 01_UE_Installation.md              <- 1단계: UE5 설치 및 기초
     ├── 02_UE_CPP_Robot_Tutorial.md        <- 2단계: C++ 기반 로봇 시뮬레이션
