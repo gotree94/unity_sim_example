@@ -69,7 +69,7 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 ## robot_core_diffdrive.xacro 파일 포함하기
 
-### 1. urdf 파일을 수정합니다.
+### 1. VS Code에서 다음과 같이 urdf 파일을 수정합니다.
 
 **robot.urdf.xacro**
 
@@ -130,5 +130,5 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 ![robot_state_publisher 실행](../img/image66.bmp)
 
-> ※ ctrl+c키를 눌러 수행중인 프로그램을 종료한 후, 윗 방향 키(page up)를 누르면 이전에 수행했던 명령이 자동으로 입력됩니다.
+> ※ ctrl+c키를 눌러 수행중인 프로그램을 종료한 후, 윗 방향 키(page up)를 누르면 이전에 수행했던 명령이 자동으로 입력됩니다. <br> 이전에 수행했던 명열을 지우려면 clear 명령을 입력해주면 됩니다.
 
