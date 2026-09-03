@@ -33,8 +33,10 @@ URDF에서 base_link와 chassis_joint 요소를 정의하면 로봇 구조의 �
 
 ![N20 DC 모터 규격](../img/image68.bmp)
 
-모터의 높이는 10mm, 메인보드 PCB의 두께는 1.6mm입니다. 모터의 중심축으로부터 메인보드의 중심까지 5mm + 0.8mm = 5.8mm입니다. 
-다음은 chassis_joint가 base_link로부터 z축으로 5.8mm 위쪽에 있음을 나타냅니다. 숫자의 단위는 m(미터)입니다.
+* 모터의 높이는 10mm, 메인보드 PCB의 두께는 1.6mm입니다.
+* 모터의 중심축으로부터 메인보드의 중심까지 5mm + 0.8mm = 5.8mm입니다.
+* 다음은 chassis_joint가 base_link로부터 z축으로 5.8mm 위쪽에 있음을 나타냅니다.
+* 숫자의 단위는 m(미터)입니다.
 
 ```xml
 <origin xyz="0 0 0.0058" rpy="0 0 0"/>
@@ -57,7 +59,8 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 # RViz2 실행하고 시각화 설정하기
 
-RViz2는 robot_state_publisher가 발행하는 TF 정보를 받아 로봇의 현재 위치와 자세를 시각화합니다.
+* 다음은 RViz2를 실행하고 시각화 설정을 해 줍니다.
+* Rviz2는 robot_state_publisher가 발행하는 TF 정보를 받아 로봇의 현재 위치와 자세를 시각화합니다.
 
 ## 1. ② 명령창에서 명령을 수행합니다.
 
@@ -151,7 +154,6 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 > ※ base_link는 로봇의 기준이 되는 가장 기본 링크로, 다른 모든 링크의 참조 기준이 됩니다. <br> chassis는 로봇의 본체를 나타내는 링크로, 이동 로봇에서는 바퀴와 센서가 장착되는 중심 구조입니다. <br> 일반적으로 chassis는 base_link에 연결되어 로봇의 전체 구조와 움직임을 표현하는 기준이 됩니다.
 
 
-## 13. rviz2 프로그램을 종료한 후, 옵션을 주어 재구동해 봅니다.
 ## 13. 다음과 같이 [File]--[Save Config As] 메뉴를 선택합니다.
 
 ![메인보드 크기](../img/image80.bmp)
@@ -164,6 +166,8 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 ```bash
 rviz2 -d /root/myros_sketch/view_bot.rviz
 ```
+
+## 16. 다음과 같이 바로 전에 저장했던 설정 상태로 뜨는 것을 확인합니다.
 
 
 
