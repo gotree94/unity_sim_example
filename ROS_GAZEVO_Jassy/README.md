@@ -21,22 +21,22 @@
 | 02 | [ROS2 개발 환경 구성하기](CH01/02_ROS2_개발환경_구성.md) | `CH01/02_ROS2_개발환경_구성.md` |
 | 03 | [URDF의 이해](CH01/03_URDF의_이해.md) | `CH01/03_URDF의_이해.md` |
 | 04 | [URDF로 로봇 구조 정의하기](CH01/04_URDF로_로봇_구조_정의.md) | `CH01/04_URDF로_로봇_구조_정의.md` |
-| 04-01 | [04_1_myros_sketch_폴더_및_기본_파일_생성하기.md](CH01/04_1_myros_sketch_폴더_및_기본_파일_생성하기.md) | `CH01/04_1_myros_sketch_폴더_및_기본_파일_생성하기.md` |
-| 04-02 | [04_2_base_link_정의하기.md](CH01/04_2_base_link_정의하기.md) | `CH01/04_2_base_link_정의하기.md` |
-| 04-03 | [04_3_chassis_joint_chassis_추가하기.md](CH01/04_3_chassis_joint_chassis_추가하기.md) | `CH01/04_3_chassis_joint_chassis_추가하기.md` |
-| 04-04 | [04_4_구동축_및_바퀴_추가하기.md](CH01/04_4_구동축_및_바퀴_추가하기.md) | `CH01/04_4_구동축_및_바퀴_추가하기.md` |
-| 04-05 | [04_5_캐스터_추가하기.md](CH01/04_5_캐스터_추가하기.md) | `CH01/04_5_캐스터_추가하기.md` |
-| 04-06 | [04_6_esp32s3_joint_esp32s3_frame_추가하기.md](CH01/04_6_esp32s3_joint_esp32s3_frame_추가하기.md) | `CH01/04_6_esp32s3_joint_esp32s3_frame_추가하기.md` |
-| 04-07 | [04_7_imu_joint_imu_link_추가하기.md](CH01/04_7_imu_joint_imu_link_추가하기.md) | `CH01/04_7_imu_joint_imu_link_추가하기.md` |
-| 04-08 | [04_8_rpi_base_joint_rpi_base_추가하기.md](CH01/04_8_rpi_base_joint_rpi_base_추가하기.md) | `CH01/04_8_rpi_base_joint_rpi_base_추가하기.md` |
-| 04-09 | [04_9_rpi_joint_rpi_frame_추가하기.md](CH01/04_9_rpi_joint_rpi_frame_추가하기.md) | `CH01/04_9_rpi_joint_rpi_frame_추가하기.md` |
-| 04-10 | [04_10_lidar_base_joint_lidar_base_frame_추가하기.md](CH01/04_10_lidar_base_joint_lidar_base_frame_추가하기.md) | `CH01/04_10_lidar_base_joint_lidar_base_frame_추가하기.md` |
-| 04-11 | [04_11_laser_joint_laser_frame_추가하기.md](CH01/04_11_laser_joint_laser_frame_추가하기.md) | `CH01/04_11_laser_joint_laser_frame_추가하기.md` |
-| 04-12 | [04_12_camera_joint_camera_link_추가하기.md](CH01/04_12_camera_joint_camera_link_추가하기.md) | `CH01/04_12_camera_joint_camera_link_추가하기.md` |
-| 04-13 | [04_13_camera_optical_joint_camera_link_optical_추가하기.md](CH01/04_13_camera_optical_joint_camera_link_optical_추가하기.md) | `CH01/04_13_camera_optical_joint_camera_link_optical_추가하기.md` |
-| 04-14 | [04_14_base_footprint_joint_base_footprint_추가하기.md](CH01/04_14_base_footprint_joint_base_footprint_추가하기.md) | `CH01/04_14_base_footprint_joint_base_footprint_추가하기.md` |
-| 04-15 | [04_15_collision_태그_추가하기.md](CH01/04_15_collision_태그_추가하기.md) | `CH01/04_15_collision_태그_추가하기.md` |
-| 04-16 | [04_16_inertial_태그_추가하기.md](CH01/04_16_inertial_태그_추가하기.md) | `CH01/04_16_inertial_태그_추가하기.md` |
+| 04-01 | [myros_sketch_폴더_및_기본_파일_생성하기](CH01/04_1_myros_sketch_폴더_및_기본_파일_생성하기.md) | `CH01/04_1_myros_sketch_폴더_및_기본_파일_생성하기.md` |
+| 04-02 | [base_link_정의하기](CH01/04_2_base_link_정의하기.md) | `CH01/04_2_base_link_정의하기.md` |
+| 04-03 | [chassis_joint_chassis_추가하기](CH01/04_3_chassis_joint_chassis_추가하기.md) | `CH01/04_3_chassis_joint_chassis_추가하기.md` |
+| 04-04 | [구동축_및_바퀴_추가하기](CH01/04_4_구동축_및_바퀴_추가하기.md) | `CH01/04_4_구동축_및_바퀴_추가하기.md` |
+| 04-05 | [캐스터_추가하기](CH01/04_5_캐스터_추가하기.md) | `CH01/04_5_캐스터_추가하기.md` |
+| 04-06 | [esp32s3_joint_esp32s3_frame_추가하기](CH01/04_6_esp32s3_joint_esp32s3_frame_추가하기.md) | `CH01/04_6_esp32s3_joint_esp32s3_frame_추가하기.md` |
+| 04-07 | [imu_joint_imu_link_추가하기](CH01/04_7_imu_joint_imu_link_추가하기.md) | `CH01/04_7_imu_joint_imu_link_추가하기.md` |
+| 04-08 | [rpi_base_joint_rpi_base_추가하기](CH01/04_8_rpi_base_joint_rpi_base_추가하기.md) | `CH01/04_8_rpi_base_joint_rpi_base_추가하기.md` |
+| 04-09 | [rpi_joint_rpi_frame_추가하기](CH01/04_9_rpi_joint_rpi_frame_추가하기.md) | `CH01/04_9_rpi_joint_rpi_frame_추가하기.md` |
+| 04-10 | [lidar_base_joint_lidar_base_frame_추가하기](CH01/04_10_lidar_base_joint_lidar_base_frame_추가하기.md) | `CH01/04_10_lidar_base_joint_lidar_base_frame_추가하기.md` |
+| 04-11 | [laser_joint_laser_frame_추가하기](CH01/04_11_laser_joint_laser_frame_추가하기.md) | `CH01/04_11_laser_joint_laser_frame_추가하기.md` |
+| 04-12 | [camera_joint_camera_link_추가하기](CH01/04_12_camera_joint_camera_link_추가하기.md) | `CH01/04_12_camera_joint_camera_link_추가하기.md` |
+| 04-13 | [camera_optical_joint_camera_link_optical_추가하기](CH01/04_13_camera_optical_joint_camera_link_optical_추가하기.md) | `CH01/04_13_camera_optical_joint_camera_link_optical_추가하기.md` |
+| 04-14 | [base_footprint_joint_base_footprint_추가하기](CH01/04_14_base_footprint_joint_base_footprint_추가하기.md) | `CH01/04_14_base_footprint_joint_base_footprint_추가하기.md` |
+| 04-15 | [collision_태그_추가하기](CH01/04_15_collision_태그_추가하기.md) | `CH01/04_15_collision_태그_추가하기.md` |
+| 04-16 | [inertial_태그_추가하기](CH01/04_16_inertial_태그_추가하기.md) | `CH01/04_16_inertial_태그_추가하기.md` |
 
 ### Chapter 02: 가제보 로봇 구동과 SLAM·Nav2 자율주행
 
