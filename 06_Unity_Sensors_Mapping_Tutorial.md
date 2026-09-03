@@ -36,31 +36,57 @@
 
 ## 1. LiDAR 사양 이해
 
-### 1-1. TurtleBot3의 실제 LiDAR: LDS-01
+### 1-1. TurtleBot3의 실제 LiDAR: LDS-02 / LDS-03
+
+TurtleBot3 Burger에 장착되는 실제 2D LiDAR는 제조 시기에 따라 **LDS-02**(구형) 또는 **LDS-03**(신형)입니다.
+
+| 버전 | 공식 문서 | 출시/교체 시기 | 특징 |
+|------|-----------|--------------|------|
+| **LDS-02** | https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/ | 2022년부터 LDS-01을 대체 | 측정 0.16 ~ 8m, 1°, 5Hz |
+| **LDS-03** | https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_03/ | 2025년부터 LDS-02를 대체 | 측정 0.05 ~ 12m, 0.9°, 10Hz |
+
+> 📎 ROBOTIS 공식 버전별 사양/데이터 패킷은 위 링크에서 확인할 수 있습니다.
+> - **LDS-02**: https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/
+> - **LDS-03**: https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_03/
+
+#### 각 버전별 주요 사양
+
+**LDS-02 (구형, 이전 버전)** — https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_02/
 
 | 항목 | 값 | 비고 |
 |------|-----|------|
 | 회전 각도 | 360° | 한 바퀴 전체 스캔 |
 | 분해능 (각도 간격) | 1° | 360개 포인트 |
-| 측정 거리 (최소) | 0.12m | 이보다 가까우면 무시 |
-| 측정 거리 (최대) | 3.5m | 이보다 먼 곳은 감지 안 됨 |
+| 측정 거리 (최소) | 0.16m | 이보다 가까우면 무시 |
+| 측정 거리 (최대) | 8m | 이보다 먼 곳은 감지 안 됨 |
 | 스캔 주기 | 0.2s | 5Hz (초당 5회 전체 스캔) |
-| 스캔 각속도 | 1800 RPM | 초당 30바퀴 회전 후 누적 |
 
-> **핵심**: LDS-01은 실제로 매우 빠르게 회전하며, 한 바퀴 누적된 360개 각도의 거리값을 5Hz로 출력합니다. Unity에서는 이 "회전하며 누적" 동작을 **시각적으로** 보여주는 모드와 **한 번에 360° 스캔**하는 데이터 모드 두 가지를 구현합니다.
+**LDS-03 (신형, 최신 버전)** — https://docs.robotis.com/docs/systems/turtlebot3/more_info/lds_03/
+
+| 항목 | 값 | 비고 |
+|------|-----|------|
+| 회전 각도 | 360° | 한 바퀴 전체 스캔 |
+| 분해능 (각도 간격) | 0.9° | 약 400개 포인트 |
+| 측정 거리 (최소) | 0.05m | 이보다 가까우면 무시 |
+| 측정 거리 (최대) | 12m | 이보다 먼 곳은 감지 안 됨 |
+| 스캔 주기 | 0.1s | 10Hz (초당 10회 전체 스캔) |
+
+> 💡 **시뮬레이션에서는** 두 버전 모두 "360° 전체를 회전하며 한 바퀴 누적된 각도별 거리값을 출력"한다는 원리는 동일합니다. 아래 구현에서는 **LDS-02(1° / 360포인트)** 사양을 기본값으로 사용하며, 필요하면 LDS-03 사양(0.9° / 10Hz)으로 바꿀 수 있습니다.
+
+> **핵심**: 실제 센서는 매우 빠르게 회전하며, 한 바퀴 누적된 각도의 거리값을 일정 주기로 출력합니다. Unity에서는 이 "회전하며 누적" 동작을 **시각적으로** 보여주는 모드와 **한 번에 360° 스캔**하는 데이터 모드 두 가지를 구현합니다.
 
 ### 1-2. 2D 레이저 스캔 데이터 구조 (ROS LaserScan 개념)
 
 ```text
 angle_min = 0        (rad)
 angle_max = 2π       (rad)  → 360°
-angle_increment = 0.0174 rad (1°)
-range_min = 0.12m
-range_max = 3.5m
-ranges[360]  ← 각도별 거리값 배열
+angle_increment = 0.0174 rad (1°)   ← LDS-02: 1° / LDS-03: 0.0157 rad (0.9°)
+range_min = 0.12m                  ← LDS-02: 0.16m / LDS-03: 0.05m
+range_max = 3.5m                   ← 이 값은 시뮬레이션 기본값 (LDS-02: 8.0m / LDS-03: 12.0m)
+ranges[360]  ← 각도별 거리값 배열 (LDS-03이면 약 400개)
 ```
 
-> 우리가 만들 Unity 데이터 구조도 이와 동일합니다. 나중에 ROS2 브릿지로 연결하면 `sensor_msgs/LaserScan` 메시지로 바로 변환 가능합니다.
+> **참고**: `range_min`/`range_max`는 시뮬레이션 기본값이며, 실제 하드웨어 버전(LDS-02/LDS-03) 사양으로 바꾸면 탐지 거리가 달라집니다. 나중에 ROS2 브릿지로 연결하면 `sensor_msgs/LaserScan` 메시지의 같은 필드로 바로 변환 가능합니다.
 
 ---
 
@@ -100,11 +126,11 @@ using System.Collections.Generic;
 
 public class LidarSensor : MonoBehaviour
 {
-    [Header("LDS-01 사양")]
-    public int rayCount = 360;        // 분해능 1° → 360개
-    public float rangeMin = 0.12f;    // 최소 측정 거리 (m)
-    public float rangeMax = 3.5f;     // 최대 측정 거리 (m)
-    public float scanRate = 5f;       // 스캔 주기 5Hz (0.2s)
+    [Header("LDS-02 사양 (기본) / LDS-03 사양으로 조정 가능")]
+    public int rayCount = 360;        // 분해능 1° → 360개 (LDS-03은 0.9° → 약 400개)
+    public float rangeMin = 0.12f;    // 최소 측정 거리 (m). LDS-02: 0.16, LDS-03: 0.05
+    public float rangeMax = 3.5f;     // 최대 측정 거리 (m). LDS-02: 8.0, LDS-03: 12.0
+    public float scanRate = 5f;       // 스캔 주기 5Hz (0.2s). LDS-03: 10Hz
     public float rotationSpeed = 1800f; // 시각적 회전 (RPM 개념, deg/s 단위로 환산)
 
     [Header("시각화")]
@@ -209,7 +235,7 @@ public class LidarSensor : MonoBehaviour
 
 1. Hierarchy에서 **base_scan** 선택
 2. **Add Component > LidarSensor** 추가
-3. 값 확인 (기본값이 LDS-01 사양)
+3. 값 확인 (기본값이 **LDS-02 사양**. LDS-03 하드웨어를 쓰면 1-1의 사양표를 참고해 rayCount/rangeMax/scanRate 조정)
 
 ### 2-4. Play 테스트 (레이저 확인)
 
