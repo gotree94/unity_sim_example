@@ -291,7 +291,7 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 
 10. 다음과 같이 [Add] 버튼을 한 번 더 눌러줍니다.
 
-![]((../img/image72.bmp)
+![](../img/image72.bmp)
 
 > ※ base_link는 로봇의 기준이 되는 가장 기본 링크로, chassis는 로봇의 본체를 나타내는 링크로, 이동 로봇에서는 바퀴와 센서가 장착되는 중심 구조입니다.
 
