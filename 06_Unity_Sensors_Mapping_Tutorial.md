@@ -31,6 +31,7 @@
 6. [IMU 센서 구현](#6-imu-센서-구현)
 7. [전체 테스트](#7-전체-테스트)
 8. [문제 해결 체크리스트](#8-문제-해결-체크리스트)
+9. [ROS2 RViz2로 맵/센서 전송 (브릿지 연동)](#9-ros2-rviz2로-맵센서-전송-브릿지-연동)
 
 ---
 
@@ -507,6 +508,36 @@ public class MapRenderer : MonoBehaviour
         occupancy[gx, gz] = Mathf.Clamp01(occupancy[gx, gz] + delta);
     }
 
+    // 외부(RosBridge/ROS2)에서 접근: 격자 점유확률을 ROS OccupancyGrid 값(-1/0/100)으로 변환해 반환.
+    // - data 인덱스는 ROS 규칙(행 우선, 좌하단 기점)과 일치시킨다: data[gz * gridSize + gx]
+    // - gx = 월드 X 방향(열, 컬럼), gz = 월드 Z 방향(행, 로우)
+    public sbyte[] GetOccupancyData()
+    {
+        sbyte[] data = new sbyte[gridSize * gridSize];
+        for (int gz = 0; gz < gridSize; gz++)
+        {
+            for (int gx = 0; gx < gridSize; gx++)
+            {
+                float p = occupancy[gx, gz];
+                if (p >= occupiedThreshold)
+                    data[gz * gridSize + gx] = 100;      // occupied
+                else if (p <= freeThreshold)
+                    data[gz * gridSize + gx] = 0;        // free
+                else
+                    data[gz * gridSize + gx] = -1;       // unknown
+            }
+        }
+        return data;
+    }
+
+    // 외부(RosBridge)에서 맵 원점(좌하단) 구하기: 맵 중심을 기준으로 -크기/2 만큼 이동한 점.
+    // Unity 좌표 (x=오른쪽, z=위) ↔ ROS 좌표 (x=오른쪽, y=위) 대응.
+    public Vector3 GetMapOrigin()
+    {
+        float half = mapWorldSize * 0.5f;
+        return transform.position + new Vector3(-half, 0f, -half);
+    }
+
     void Redraw()
     {
         for (int x = 0; x < gridSize; x++)
@@ -974,6 +1005,71 @@ Assets\
 | TF 개념 | `odom → base_link → base_scan` 트리 |
 
 > **다음 단계(7단계)**: 이 센서 데이터를 **TCP/IP나 ROS2 브릿지로 외부 Python으로 전송**하여 실제 SLAM 패키지(cartographer)로 맵을 만드는 확장.
+
+---
+
+## 9. ROS2 RViz2로 맵/센서 전송 (브릿지 연동)
+
+이 단계까지 만든 Unity 센서/맵 데이터를 **실제 ROS2 환경(Jazzy, Docker)의 RViz2**에 그대로 표시하는 확장입니다. Unity는 TCP 서버가 되고, 컨테이너 안의 Python 노드가 데이터를 받아 `nav_msgs/OccupancyGrid`, `sensor_msgs/LaserScan`, `nav_msgs/Odometry`, `tf`로 발행합니다.
+
+### 9-1. 통신 구조와 좌표 변환 원리
+
+```
+Windows                                          Docker 컨테이너(ros_jazzy1)
+Unity (RosBridge.cs, TCP 서버 0.0.0.0:8765)
+   │  이진 프레임 ("TBR1" + msgType + payloadLen)
+   ▼
+UnityBridge (unity_bridge.py, TCP 클라이언트 → host.docker.internal:8765)
+   └─ 발행: /map(OccupancyGrid)  /scan(LaserScan)  /odom(Odometry)  /tf, /tf_static
+      → RViz2 표시
+```
+
+- Unity 좌표계(x=오른쪽, z=북쪽, y=위)를 ROS REP-103 규칙(x=동쪽, y=북쪽, z=위)으로 변환합니다.
+  - **ROS 위치 = (Unity x, Unity z, 0)**
+  - **ROS 요각 = π/2 − Unity yaw**  (`unity_bridge.py`의 `quat_from_yaw`에 반영)
+  - **스캔 각도 반전**: Unity는 각도를 정면(+Z)·동쪽 방향(시계방향)으로 증가시키지만, ROS LaserScan은 +X(전방)에서 반시계방향으로 증가하므로 `ranges[]`를 역순으로 전송합니다 (`RosBridge.SerializeScan`).
+- TF 트리: `map ←(static)→ odom ←(동적)→ base_footprint ←(static, 0.055m)→ base_scan`
+
+> **왜 요각 변환이 필요한가?** Unity는 +Z가 "정면"이고 +X가 "오른쪽"이지만, ROS(REP-103)는 +X가 정면입니다. 따라서 Unity 0°(정북·+Z)를 ROS에서는 90°(동쪽)로 보정해야 로봇/스캔이 맵 위에 정확히 정렬됩니다.
+
+### 9-2. 파일 배치와 실행 절차
+
+새 파일 3개 (기존 `MapRenderer.cs`, `LidarSensor.cs`는 4장에서 만든 버전 그대로 사용):
+
+| # | 파일 | 위치 | 역할 |
+|---|------|------|------|
+| 1 | `RosBridge.cs` | Unity `Assets/` | TCP 서버(8765). 맵/스캔/오도메트리를 이진 프레임으로 직렬화해 전송 |
+| 2 | `unity_bridge.py` | `D:\github\unity_sim_example\07_ROS2_RViz_Bridge\` | TCP 클라이언트 → ROS2 토픽 발행 |
+| 3 | `rviz_map_view.rviz` | 같은 폴더 | RViz2 표시 설정 (Fixed Frame = `map`) |
+
+**실행 순서** (Unity 씬에 `RosBridge` 컴포넌트를 아무 GameObject에 추가 후):
+
+1. Unity 에디터에서 **Play** 실행 → 하단 로그에 `[RosBridge] TCP 서버 시작됨 - 0.0.0.0:8765` 확인.
+2. ROS2 컨테이너에서 브릿지 노드 실행 (라우터의 `host.docker.internal` → Windows 호스트가 보임):
+   ```bash
+   docker exec -it ros_jazzy1 bash
+   python3 /mnt/d/github/unity_sim_example/07_ROS2_RViz_Bridge/unity_bridge.py
+   ```
+   → 로그 `[유니티 브릿지] Unity에 연결됨!` 확인.
+3. 다른 터미널에서 RViz2 실행 (VcXsrv가 켜져 있는지 확인):
+   ```bash
+   docker exec -it ros_jazzy1 bash
+   rviz2 -d /mnt/d/github/unity_sim_example/07_ROS2_RViz_Bridge/rviz_map_view.rviz
+   ```
+4. Unity에서 로봇을 이동/회전 → RViz2에서 **검정 맵(장애물) · 흰색(자유공간) + 붉은 LaserScan**이 실시간 갱신됩니다.
+
+> **Tip**: Unity Play와 브릿지 실행 순서는 무관합니다. `unity_bridge.py`는 2초 간격으로 Unity 서버에 재접속을 시도합니다.
+>
+> **주의**: Windows 방화벽이 8765 포트 인바운드를 막으면 컨테이너가 접속하지 못하므로, 01단계에서 했던 것처럼 해당 포트를 허용해야 합니다.
+
+### 9-3. 오류 확인 요령
+
+| 증상 | 확인할 것 |
+|------|-----------|
+| Unity 로그 "서버 시작 실패" | `netstat -ano \| findstr 8765` 로 포트 점유 확인 |
+| 브릿지가 반복 "연결 끊김" | Windows 방화벽 인바운드 8765 허용 여부, Unity Play 상태 |
+| RViz2에 맵이 안 뜸 | RViz2 하단 토픽 목록에 `/map`이 나타나는지, Fixed Frame = `map` |
+| 센서/맵이 어긋남 | TF 패널에서 `map → odom → base_footprint → base_scan` 연결 확인 |
 
 ---
 
