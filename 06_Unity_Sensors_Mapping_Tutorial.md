@@ -681,6 +681,19 @@ public class OdometrySensor : MonoBehaviour
     void Start()
     {
         FindWheels();
+
+        // --- ★ 자동 탐색 ---
+        // Target Rb를 Inspector에서 드래그하지 않아도, 자신 또는 하위 오브젝트에서
+        // Rigidbody를 자동으로 찾습니다. (URDF 임포트로 Rigidbody가 하위에 있는 경우 대응)
+        if (targetRb == null)
+        {
+            targetRb = GetComponentInChildren<Rigidbody>();
+            if (targetRb != null)
+                Debug.Log($"[OdometrySensor] Rigidbody 자동 탐색됨: {targetRb.gameObject.name}");
+            else
+                Debug.LogWarning("[OdometrySensor] Rigidbody를 찾지 못했습니다. 씬의 오브젝트에 Rigidbody를 추가하거나 Target Rb를 연결하세요.");
+        }
+
         if (targetRb != null)
         {
             position = targetRb.position;
@@ -749,11 +762,13 @@ public class OdometrySensor : MonoBehaviour
 
 1. Hierarchy에서 **turtlebot3_burger** 선택
 2. Inspector에서 **Add Component** 클릭 → 검색란에 `OdometrySensor` 입력 → **OdometrySensor** 클릭
-3. Inspector에서 **Target Rb** = `turtlebot3_burger` (Rigidbody) 드래그
-   - ⚠️ **드래그가 안 되면**: `turtlebot3_burger` **최상위 오브젝트에 Rigidbody가 직접 붙어 있는지** 확인하세요.
-     URDF 임포트 구조라면 Rigidbody가 `base_link` 같은 자식에 있을 수 있습니다.
-     → 그러면 Rigidbody가 있는 오브젝트 자체를 드래그하거나,
-     **Target Rb 옆 ○(타깃) 버튼**을 눌러 리스트에서 `turtlebot3_burger (Rigidbody)`를 선택하세요.
+3. **Target Rb = 비워둬도 됩니다.** (5-3 코드의 `Start()`가 Rigidbody를 `GetComponentInChildren`으로 자동 탐색)
+
+> 💡 **Rigidbody가 하나도 없을 때** (드래그해도 안 들어가는 경우가 바로 이것):
+> 위 하이어러키처럼 `turtlebot3_burger ~ base_scan` 전부 **Rigidbody 없음(X)** 이면
+> **Add Component > Rigidbody** 를 최상위 `turtlebot3_burger`에 추가하세요.
+> 그러면 콘솔에 `[OdometrySensor] Rigidbody 자동 탐색됨: turtlebot3_burger` 로그가 찍힙니다.
+> (로봇을 물리적으로 움직이는 05단계 컨트롤러가 Rigidbody를 쓴다면, 이 과정은 필수입니다)
 
 > ⚠️ **Add Component 목록에 OdometrySensor가 안 보일 때 (2번이 안 되는 경우)**
 > Unity는 **프로젝트 폴더(`Assets/`)에 컴파일 오류가 하나라도 있으면 모든 스크립트 컴포넌트를 비활성화**합니다.
