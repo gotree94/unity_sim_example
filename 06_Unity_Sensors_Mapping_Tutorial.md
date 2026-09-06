@@ -582,6 +582,71 @@ public class MapRenderer : MonoBehaviour
 }
 ```
 
+```
+                    +----------------------------------------+
+                    |             MapRenderer                |
+                    | (gridSize, resolution, hit/miss delta) |
+                    +----------------------------------------+
+                                        |
+                 +----------------------+----------------------+
+                 |                                             |
+                 v                                             v
+  [1. 데이터 구조 및 초기화]                       [2. 매 프레임 업데이트 (Update)]
++---------------------------------+             +---------------------------------+
+| - 2D Array: occupancy[200, 200] |             | - autoUpdate && lidar != null   |
+|   (초기값: 0.5f = Unknown)      |             | - DrawLidarScan() 호출          |
+| - Texture2D: mapTexture         |             +---------------------------------+
+| - World Size = 200 * 0.05 = 10m |                            |
++---------------------------------+                            v
+                                                [3. LiDAR 레이저 광선 처리]
+                                                +---------------------------------+
+                                                | for each Ray (0 ~ rayCount-1)   |
+                                                |  - 로봇 위치(Origin) & 방위 계산 |
+                                                |  - hitPoint (장애물 충돌 지점)  |
+                                                +---------------------------------+
+                                                               |
+                                                               v
+                                                [4. Ray Casting & 확률 업데이트]
+                                                +---------------------------------+
+                                                | Lerp(Origin, hitPoint, step)    |
+                                                |  - 중간 경로 (Free Space)       |
+                                                |    -> delta = -missDecrease     |
+                                                |  - 끝점 (Obstacle Surface)      |
+                                                |    -> delta = +hitIncrease      |
+                                                |                                 |
+                                                | UpdateOccupancy(worldPos, delta)|
+                                                |  - World -> Grid 좌표 변환      |
+                                                |  - occupancy = Clamp01(p + d)   |
+                                                +---------------------------------+
+                                                               |
+                                                               v
+                                                [5. 시각화 & 데이터 동기화]
+                                                +---------------------------------+
+                                                | Redraw()                        |
+                                                |  - p >= 0.7  -> 검정 (Occupied) |
+                                                |  - p <= 0.3  -> 흰색 (Free)     |
+                                                |  - Else      -> 회색 (Unknown)  |
+                                                |  - mapTexture.Apply()           |
+                                                +---------------------------------+
+                                                 /                               \
+                                                /                                 \
+                                               v                                   v
+                                [6a. 3D Quad Display]               [6b. 2D Screen GUI]
+                                +-------------------+               +-------------------+
+                                | Material Texture  |               | OnGUI()           |
+                                | 3D 바닥면 렌더링  |               | Screen Panel      |
+                                +-------------------+               +-------------------+
+
+                                                  [7. External ROS2 Interface]
+                                                +---------------------------------+
+                                                | GetOccupancyData()              |
+                                                |  - sbyte[] 배열 변환            |
+                                                |  - -1(Unknown) / 0 / 100        |
+                                                | GetMapOrigin()                  |
+                                                |  - 좌하단 Origin 좌표 반환      |
+                                                +---------------------------------+
+```
+
 ### 4-4. 맵 표시용 Quad 만들기 + 화면 패널
 
 1. Hierarchy 우클릭 → **3D Object > Quad**
