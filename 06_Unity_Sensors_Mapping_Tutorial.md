@@ -240,7 +240,12 @@ public class LidarSensor : MonoBehaviour
             float angleRad = i * Mathf.Deg2Rad; // 0 ~ 359°
             // 로봇의 forward(전방)가 로컬 Z축이라는 점에 주의.
             // X = sin(각도), Z = cos(각도) 로 Y축 회전한 방향 벡터를 만듦.
-            Vector3 direction = new Vector3(Mathf.Sin(angleRad), 0, Mathf.Cos(angleRad));
+            // ★ 중요: Physics.Raycast는 월드 좌표로 방향을 받으므로,
+            //   TransformDirection으로 로봇(base_scan)의 회전을 반드시 반영해야 합니다.
+            //   이 변환이 없으면 ranges[i]가 월드 고정 각도로 측정되어,
+            //   맵핑에서 로봇 회전 보정과 어긋나 맵이 로봇과 함께 돌아가는 버그가 생깁니다.
+            Vector3 localDir = new Vector3(Mathf.Sin(angleRad), 0, Mathf.Cos(angleRad));
+            Vector3 direction = transform.TransformDirection(localDir);
 
             if (Physics.Raycast(origin, direction, out RaycastHit hit, rangeMax))
             {
@@ -342,11 +347,34 @@ Play 후 Scene 뷰에서 레이저 라인이 장애물 표면에서 **끊기거�
 
 LiDAR로 측정한 거리값을 **격자(Grid)** 형태로 변환하여 장애물이 있는 칸을 표시합니다.
 
-| 격자 값 | 의미 | 색 |
-|---------|------|-----|
-| 0 | 비어 있음 (free) | 검정 |
-| 100 | 장애물 (occupied) | 흰색 |
-| -1 | 미탐색 (unknown) | 회색 |
+> 🚨 **전제: LidarSensor 회전 보정이 선행돼야 합니다 (2-2 참고)**
+>
+> `LidarSensor.UpdateScan()`에서 레이저 방향을 `transform.TransformDirection(localDir)`으로
+> **로봇(base_scan) 회전을 반영**해 발사해야 합니다. 반영하지 않으면 `ranges[i]`가 월드 고정
+> 각도로 측정되어, 맵핑에서 로봇 회전을 다시 더할 때 **맵이 로봇과 함께 돌아가고 장애물
+> 위치가 어긋나거나 지워지는** 버그가 발생합니다. (실제 씬에서 확인된 대표 버그)
+
+**이번 구현: 확률 기반 점유격자 (Probabilistic Occupancy Grid)**
+
+앞서 장애물 위치를 고정값(0/100/-1)으로 저장하던 방식을, 실제 SLAM(gmapping/cartographer)처럼
+**각 칸에 점유확률(0~1)** 을 저장하는 방식으로 개선했습니다.
+
+| 표시 | 점유확률 조건 | RViz Map 색 |
+|------|--------------|------------|
+| 장애물 (occupied) | 확률 ≥ 0.7 | **검정 (black)** |
+| 비어 있음 (free) | 확률 ≤ 0.3 | **흰색 (white)** |
+| 미탐색 (unknown) | 0.3 ~ 0.7 | **회색 (gray)** |
+
+> 🎨 **RViz 색상 규칙**: ROS `nav_msgs/OccupancyGrid`를 RViz 기본 Map 스킴으로 표시하면
+> **점유 = 검정, 자유 = 흰색, 미탐색 = 회색**입니다. (초안에서 "자유=검정/장애물=흰색"으로
+> 적었던 것은 RViz와 반대였으므로 수정. 실제 TurtleBot3 SLAM 맵(`.pgm`)도 동일한 규칙입니다.)
+
+**왜 확률(누적) 방식인가?**
+- 레이저 **끝점(장애물)** → 해당 칸의 확률을 `+hitIncrease` 올림
+- 레이저 **통과 경로(free)** → 해당 칸의 확률을 `-missDecrease` 내림
+- 장애물은 계속 레이저에 맞아 검정(장애물)으로 선명해지고, 지나간 경로는 흰색(free)으로 흐려짐
+- **한 번 보인 장애물이 무한정 남는 게 아니라**, 이후 그 자리가 빈 공간으로 판정되면 확률이
+  내려가 실제 상황이 반영됨 (동적 환경에서도 유효)
 
 ### 4-2. 맵 해상도 설정
 
@@ -363,33 +391,59 @@ Project 창 → **Assets** 우클릭 → **Create > C# Script** → 이름: `Map
 ```csharp
 using UnityEngine;
 
+// 실제 SLAM(gmapping/cartographer)의 점유확률(Occupancy Probability) 방식을 따른 맵 렌더러입니다.
+// - 각 격자에 확률(0~1)을 저장합니다. 0.5가 초기(unknown)값입니다.
+// - 레이저 끝점(장애물)은 확률을 높이고, 경로(free)는 확률을 낮춥니다.
+// - 표시 (RViz Map 규칙): 확률이 높으면 검정(장애물), 낮으면 흰색(free), 중간값이면 회색(unknown).
+//   결과적으로 장애물만 선명하게 남고 지나간 경로는 흐려집니다.
 public class MapRenderer : MonoBehaviour
 {
     [Header("맵 설정")]
     public int gridSize = 200;         // 200x200 픽셀
     public float resolution = 0.05f;   // 5cm/픽셀
+    [Tooltip("참고용 로봇 Transform (현재 맵핑은 lidar.transform을 기준으로 계산하므로 선택 사항)")]
     public Transform robotTransform;
     public LidarSensor lidar;
 
     [Header("연결")]
     public bool autoUpdate = true;
 
+    [Header("화면 표시")]
+    [Tooltip("MapDisplay Quad(3D 공간)에 맵 텍스처를 표시할지 (true면 3D 바닥에도 보임)")]
+    public bool showOnQuad = true;
+    [Tooltip("화면 코너에 RViz처럼 별도 2D 맵 패널을 표시할지")]
+    public bool showOnScreen = true;
+    private Rect panelRect = new Rect(10, 250, 300, 300); // 화면 좌상단 아래에 패널
+
+    [Header("점유확률 파라미터")]
+    [Tooltip("레이저 끝점(장애물)일 때 확률 증가량 (기본 0.3)")]
+    public float hitIncrease = 0.3f;
+    [Tooltip("경로(빈 공간)일 때 확률 감소량 (기본 0.1)")]
+    public float missDecrease = 0.1f;
+    [Tooltip("확률이 이 값 이상이면 검정(장애물)으로 판정")]
+    public float occupiedThreshold = 0.7f;
+    [Tooltip("확률이 이 값 이하이면 흰색(free)으로 판정")]
+    public float freeThreshold = 0.3f;
+
     private Texture2D mapTexture;
-    private int[,] occupancy; // 0 free, 100 occupied, -1 unknown
+    private float[,] occupancy; // 점유확률 0~1, 0.5=unknown
     private float mapWorldSize;
 
     void Start()
     {
         mapWorldSize = gridSize * resolution; // 200 * 0.05 = 10m
 
-        occupancy = new int[gridSize, gridSize];
+        occupancy = new float[gridSize, gridSize];
         for (int x = 0; x < gridSize; x++)
             for (int y = 0; y < gridSize; y++)
-                occupancy[x, y] = -1; // 초기 미탐색
+                occupancy[x, y] = 0.5f; // 초기 미탐색(unknown)
 
         mapTexture = new Texture2D(gridSize, gridSize);
         mapTexture.filterMode = FilterMode.Point;
         GetComponent<Renderer>().material.mainTexture = mapTexture;
+
+        // 3D Quad에 표시할지 여부에 따라 렌더러 켜기/끄기
+        GetComponent<Renderer>().enabled = showOnQuad;
         Redraw();
 
         // 자식 Quad 크기를 맵 크기에 맞춤
@@ -402,7 +456,7 @@ public class MapRenderer : MonoBehaviour
             DrawLidarScan();
     }
 
-    // LiDAR 스캔을 격자에 반영
+    // LiDAR 스캔을 격자에 반영 (확률 갱신)
     void DrawLidarScan()
     {
         for (int i = 0; i < lidar.rayCount; i++)
@@ -410,34 +464,36 @@ public class MapRenderer : MonoBehaviour
             float range = lidar.GetRange(i);
             if (float.IsInfinity(range)) continue;
 
-            float angleDeg = i; // 0~359
-            float angleRad = angleDeg * Mathf.Deg2Rad;
+            float angleRad = i * Mathf.Deg2Rad;
 
             // 로봇의 월드 회전 고려 (로봇이 돌면 레이저도 같이 돔)
-            // 주의: robotTransform의 Y 회전을 써야 로봇 방향이 반영됨. Quad(자기 자신) 회전이 아님!
-            float worldAngle = robotTransform.eulerAngles.y * Mathf.Deg2Rad + angleRad;
+            // 주의: LidarSensor가 TransformDirection으로 base_scan 회전을 반영해 측정하므로,
+            //       맵핑에서도 반드시 동일한 기준(lidar.transform)을 사용해야 합니다.
+            //       robotTransform(루트)을 쓰면 base_scan의 로컬 회전 오프셋이 어긋나 맵이 틀어질 수 있습니다.
+            float worldAngle = lidar.transform.eulerAngles.y * Mathf.Deg2Rad + angleRad;
             Vector3 dir = new Vector3(Mathf.Sin(worldAngle), 0, Mathf.Cos(worldAngle));
 
-            // 로봇 위치 (맵 중심 기준 월드 좌표)
-            Vector3 robotPos = robotTransform.position;
-
-            // 장애물 끝점
+            // 레이저 원점 위치 (로봇 위치) — 센서 기준으로 사용
+            Vector3 robotPos = lidar.transform.position;
             Vector3 hitPoint = robotPos + dir * range;
 
-            // 로봇~장애물 라인 사이의 칸을 free(0)로, 장애물 칸을 occupied(100)로
+            // 경로(free) 칸: 확률 감소, 끝점(장애물) 칸: 확률 증가
             int steps = Mathf.CeilToInt(range / resolution);
             for (int s = 1; s <= steps; s++)
             {
                 Vector3 point = Vector3.Lerp(robotPos, hitPoint, (float)s / steps);
-                SetOccupancy(point, s == steps ? 100 : 0);
+                if (s == steps)
+                    UpdateOccupancy(point, hitIncrease);   // 장애물 표면
+                else
+                    UpdateOccupancy(point, -missDecrease); // 빈 공간
             }
         }
         Redraw();
     }
 
-    void SetOccupancy(Vector3 worldPos, int value)
+    void UpdateOccupancy(Vector3 worldPos, float delta)
     {
-        // 월드 좌표 → 격자 좌표 (맵 중심 = robotTransform 초기 위치)
+        // 월드 좌표 → 격자 좌표 (맵 중심 = transform.position)
         Vector3 mapCenter = transform.position;
         float localX = worldPos.x - mapCenter.x;
         float localZ = worldPos.z - mapCenter.z;
@@ -447,9 +503,8 @@ public class MapRenderer : MonoBehaviour
 
         if (gx < 0 || gx >= gridSize || gz < 0 || gz >= gridSize) return;
 
-        // occupied를 free로 덮어쓰지 않게 보존
-        if (value == 100 || occupancy[gx, gz] == -1)
-            occupancy[gx, gz] = value;
+        // 확률을 0~1 범위로 clamp하며 갱신
+        occupancy[gx, gz] = Mathf.Clamp01(occupancy[gx, gz] + delta);
     }
 
     void Redraw()
@@ -458,21 +513,45 @@ public class MapRenderer : MonoBehaviour
         {
             for (int y = 0; y < gridSize; y++)
             {
-                int v = occupancy[x, y];
-                if (v == -1)
-                    mapTexture.SetPixel(x, y, Color.gray);
-                else if (v == 100)
-                    mapTexture.SetPixel(x, y, Color.white);
+                float p = occupancy[x, y];
+                // RViz Map 색상 규칙과 동일:
+                //   점유(occupied)  = 검정(black)
+                //   자유(free)      = 흰색(white)
+                //   미탐색(unknown) = 회색(gray)
+                if (p >= occupiedThreshold)
+                    mapTexture.SetPixel(x, y, Color.black);      // 장애물
+                else if (p <= freeThreshold)
+                    mapTexture.SetPixel(x, y, Color.white);      // 빈 공간
                 else
-                    mapTexture.SetPixel(x, y, Color.black);
+                    mapTexture.SetPixel(x, y, Color.gray);       // 미탐색/불확실
             }
         }
-        mapTexture.Apply();
+        mapTexture.Apply(); // 텍스처 변경사항을 GPU에 반영
+    }
+
+    // RViz처럼 화면 코너에 별도 2D 맵 패널을 그립니다.
+    // - 검은 테두리 + 흰 프레임 안에 정사각형 맵 텍스처 → 3D 환경과 별도 화면에서 확인 가능
+    void OnGUI()
+    {
+        if (!showOnScreen || mapTexture == null) return;
+
+        // 외곽 검은 테두리 + 안쪽 흰 배경(패널 프레임)
+        GUI.DrawTexture(panelRect, Texture2D.blackTexture);
+        Rect inner = new Rect(panelRect.x + 2, panelRect.y + 2,
+                              panelRect.width - 4, panelRect.height - 4);
+        GUI.DrawTexture(inner, Texture2D.whiteTexture);
+
+        // 맵 텍스처를 패널 중앙에 정사각형으로 그리기 (비율 유지)
+        float size = Mathf.Min(panelRect.width - 10, panelRect.height - 10);
+        Rect mapRect = new Rect(panelRect.x + (panelRect.width - size) / 2f,
+                                panelRect.y + (panelRect.height - size) / 2f,
+                                size, size);
+        GUI.DrawTexture(mapRect, mapTexture);
     }
 }
 ```
 
-### 4-4. 맵 표시용 Quad 만들기
+### 4-4. 맵 표시용 Quad 만들기 + 화면 패널
 
 1. Hierarchy 우클릭 → **3D Object > Quad**
 2. 이름 `MapDisplay`
@@ -482,19 +561,39 @@ public class MapRenderer : MonoBehaviour
      "수직으로 선 평면"처럼 보입니다. **X축 90° 눕혀** 바닥에 평평하게 깔아야 위에서
      내려다보는 지도가 됩니다. (Rotation X = 90)
 5. Inspector 연결:
-   - **Robot Transform** = `turtlebot3_burger` (Rigidbody 오브젝트)
-   - **Lidar** = `base_scan`의 LidarSensor
+   - **Lidar** = `base_scan`의 LidarSensor ← **필수**. 위치/회전 기준을 센서 자체에서 가져옵니다.
+   - **Robot Transform** = `turtlebot3_burger` (선택. 연결해도 되지만 확률 계산은 센서 기준입니다)
    - **Position**: 맵 Quad를 위에서 내려다보게 `(0, 0.15, 0)` 정도로 (Y는 완충값)
+   - **autoUpdate** = `true` 유지
 
 > ⚠️ **맵 중심 주의**: MapRenderer의 `transform.position`을 맵 중심으로 사용합니다. Quad를 월드 원점(0,0,0)에 두고 로봇도 0 근처에서 출발해야 정확합니다.
+
+**화면 패널 설정 (RViz처럼 3D와 분리 보기)**
+
+같은 화면에 3D 환경과 맵 Quad가 겹쳐 보이면 인식이 혼란스러울 수 있습니다.
+`MapDisplay`의 MapRenderer 컴포넌트에서:
+
+| 설정 | 값 | 효과 |
+|------|-----|------|
+| `showOnScreen` | `true` (기본) | 화면 좌상단 아래에 **별도 2D 맵 패널** 표시 (RViz Map 창처럼) |
+| `showOnQuad` | `false`로 해제 | 3D 바닥 Quad 맵을 끄고 **화면 패널로만** 표시 → 3D 로봇 환경과 완전 분리 |
+
+> 💡 화면 패널 위치/크기는 코드의 `panelRect` 값(`new Rect(10, 250, 300, 300)`)을 수정해 조절합니다.
+> RViz처럼 3D 장면은 Game 뷰 그대로, 맵은 별도 패널에서 실시간으로 확인할 수 있습니다.
 
 ### 4-5. Play 테스트 (맵 확인)
 
 1. 로봇을 움직이며(W/S/A/D) 장애물 근처를 지나가게 함
-2. Quad를 위에서 보면 로봇 경로와 장애물 위치가 **하얀 점**으로 표시되는지 확인
-3. 지나간 자리가 **검정(free)**으로 채워지는지 확인
+2. **RViz 색상 기준으로 확인**:
+   - **장애물(검정)**: 레이저가 맞는 지점이 검정 점으로 선명하게 남음
+   - **자유(흰색)**: 레이저가 통과한 경로가 흰색으로 채워짐
+   - **미탐색(회색)**: 아직 스캔하지 않은 영역
+3. **회전 안정성 확인**: 로봇을 A/D로 제자리 회전시켜도 **이미 그려진 맵은 회전하지 않고 고정**된 채
+   새 방향 영역만 채워지는지 확인 (이전 버그였던 "맵이 로봇과 함께 도는" 현상이 없어야 정상)
+4. 화면 패널(`showOnScreen`)에서도 동일한 맵이 그려지는지 확인
 
-> 💡 **팁**: Quad를 바라보도록 Main Camera를 위에서 내려다보는 각도로 조정하면 맵이 실시간으로 그려지는 모습을 보기 좋습니다.
+> 💡 **팁**: Quad를 바라보도록 Main Camera를 위에서 내려다보는 각도로 조정하거나,
+> `showOnQuad = false`로 두고 화면 패널만 띄우면 RViz처럼 3D 환경과 맵을 분리해 볼 수 있습니다.
 
 ---
 
@@ -791,7 +890,7 @@ MapDisplay (Quad + MapRenderer)     (맵)
 ```
 ✅ LiDAR: 회전 레이저 + 360° 각도별 거리 (ranges[360])
 ✅ 장애물: 3개의 Cube가 레이저 반사 지점 생성
-✅ 맵: MapDisplay에 장애물이 흰 점, 빈 공간이 검정으로 표시
+✅ 맵: MapDisplay에 장애물이 검정 점, 빈 공간이 흰색(free)으로 표시 (RViz Map 규칙)
 ✅ 오도메트리: 위치/방향/속도가 이동에 따라 갱신
 ✅ IMU: 회전 시 각속도, 가감속 시 가속도 변화
 ```
