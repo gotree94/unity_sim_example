@@ -748,8 +748,23 @@ public class OdometrySensor : MonoBehaviour
 ### 5-4. 스크립트 연결
 
 1. Hierarchy에서 **turtlebot3_burger** 선택
-2. **Add Component > OdometrySensor** 추가
+2. Inspector에서 **Add Component** 클릭 → 검색란에 `OdometrySensor` 입력 → **OdometrySensor** 클릭
 3. Inspector에서 **Target Rb** = `turtlebot3_burger` (Rigidbody) 드래그
+   - ⚠️ **드래그가 안 되면**: `turtlebot3_burger` **최상위 오브젝트에 Rigidbody가 직접 붙어 있는지** 확인하세요.
+     URDF 임포트 구조라면 Rigidbody가 `base_link` 같은 자식에 있을 수 있습니다.
+     → 그러면 Rigidbody가 있는 오브젝트 자체를 드래그하거나,
+     **Target Rb 옆 ○(타깃) 버튼**을 눌러 리스트에서 `turtlebot3_burger (Rigidbody)`를 선택하세요.
+
+> ⚠️ **Add Component 목록에 OdometrySensor가 안 보일 때 (2번이 안 되는 경우)**
+> Unity는 **프로젝트 폴더(`Assets/`)에 컴파일 오류가 하나라도 있으면 모든 스크립트 컴포넌트를 비활성화**합니다.
+> 이것이 "2번부터 안 되는" 가장 흔한 원인이며, 반드시 이것부터 확인하세요:
+>
+> 1. **Console 열기**: `Window > General > Console` → **빨간색 오류**가 있는지 확인.
+>    오류 줄을 클릭하면 어느 파일/몇 번째 줄인지 나옵니다. 빨간 오류가 사라져야 Add Component에 스크립트가 나타납니다.
+> 2. **코드를 방금 붙여넣었다면**: Unity 에디터 창을 클릭해 **재컴파일**을 유도 (오류가 사라질 때까지 기다림).
+> 3. **파일명 = 클래스명**: `OdometrySensor.cs` 파일 안에 `public class OdometrySensor` 인지 확인.
+>    파일명과 클래스명이 다르면 컴파일 오류가 됩니다.
+> 4. **스크립트 위치**: 스크립트가 `Assets/` 폴더 **바깥**에 있으면 씬에서 못 씁니다. `Assets/` 안으로 이동.
 
 ### 5-5. 확인 방법 (Debug 로그)
 
