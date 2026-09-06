@@ -793,10 +793,13 @@ OdometrySensor에 표시 확인용 메서드를 추가하여 로그로 확인:
     void OnGUI()
     {
         GUILayout.BeginArea(new Rect(10, 10, 300, 120));
+        // 텍스트 색상: GUI.contentColor로 글씨 색을 바꿀 수 있음 (미지정 시 흰색)
+        GUI.contentColor = Color.yellow;
         GUILayout.Label($"Pos: ({position.x:F2}, {position.z:F2})");
         GUILayout.Label($"Yaw: {yaw * Mathf.Rad2Deg:F1}°");
         GUILayout.Label($"Linear: {linearVel.x:F2} m/s");
         GUILayout.Label($"Angular: {angularVel:F2} rad/s");
+        GUI.contentColor = Color.white; // 원래 색(흰색)으로 복원
         GUILayout.EndArea();
     }
 ```
