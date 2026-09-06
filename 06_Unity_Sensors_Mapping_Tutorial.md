@@ -915,18 +915,18 @@ public class ImuSensor : MonoBehaviour
 
     void Start()
     {
-        // --- ★ 자동 탐색 ---
-        // Target Rb를 Inspector에서 드래그하지 않아도, 자신 또는 하위 오브젝트에서
-        // Rigidbody를 자동으로 찾습니다. (URDF 임포트에서 Rigidbody는 TurtleBot3Setup이
-        //  Awake 시점에 추가하므로 에디터에서는 드래그할 대상이 없습니다)
+        // --- ★ 자동 탐색 (상향 + 하향) ---
+        // 이 스크립트는 imu_link 같은 하위 링크에 붙으므로, Rigidbody가 있는
+        // 부모(예: turtlebot3_burger 루트)의 Rigidbody도 찾아야 합니다.
+        // 순서: ① 부모 방향(자기 포함) → ② 자식 방향
         if (targetRb == null)
-        {
+            targetRb = GetComponentInParent<Rigidbody>();
+        if (targetRb == null)
             targetRb = GetComponentInChildren<Rigidbody>();
-            if (targetRb != null)
-                Debug.Log($"[ImuSensor] Rigidbody 자동 탐색됨: {targetRb.gameObject.name}");
-            else
-                Debug.LogWarning("[ImuSensor] Rigidbody를 찾지 못했습니다. 씬의 오브젝트에 Rigidbody를 추가하거나 Target Rb를 연결하세요.");
-        }
+        if (targetRb != null)
+            Debug.Log($"[ImuSensor] Rigidbody 자동 탐색됨: {targetRb.gameObject.name}");
+        else
+            Debug.LogWarning("[ImuSensor] Rigidbody를 찾지 못했습니다. 씬의 오브젝트에 Rigidbody를 추가하거나 Target Rb를 연결하세요.");
 
         if (targetRb != null)
             prevVelocity = targetRb.velocity;
@@ -970,7 +970,9 @@ public class ImuSensor : MonoBehaviour
 
 1. Hierarchy에서 **imu_link** 선택
 2. **Add Component > ImuSensor** 추가
-3. **Target Rb = 비워둬도 됩니다.** (6-3 코드의 `Start()`가 Rigidbody를 `GetComponentInChildren`으로 자동 탐색)
+3. **Target Rb = 비워둬도 됩니다.** (6-3 코드의 `Start()`가 **부모 → 자식 순서**로 Rigidbody를 자동 탐색)
+   - ⚠️ `imu_link`에 붙이므로 `GetComponentInChildren`만으론 부모(루트)의 Rigidbody를 못 찾습니다.
+     수정된 코드는 `GetComponentInParent`(부모) → `GetComponentInChildren`(자식) 순으로 찾습니다.
    - ⚠️ 이 프로젝트의 Rigidbody는 `TurtleBot3Setup.Awake()`가 **Play 시점에 추가**하므로, 에디터에서
      드래그하려 해도 전부 X로 보입니다. 드래그하지 말고 **비워두세요.**
    - Play 시 콘솔에 `[ImuSensor] Rigidbody 자동 탐색됨: turtlebot3_burger` 로그가 찍히면 정상입니다.
