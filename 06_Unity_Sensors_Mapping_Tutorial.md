@@ -915,6 +915,19 @@ public class ImuSensor : MonoBehaviour
 
     void Start()
     {
+        // --- ★ 자동 탐색 ---
+        // Target Rb를 Inspector에서 드래그하지 않아도, 자신 또는 하위 오브젝트에서
+        // Rigidbody를 자동으로 찾습니다. (URDF 임포트에서 Rigidbody는 TurtleBot3Setup이
+        //  Awake 시점에 추가하므로 에디터에서는 드래그할 대상이 없습니다)
+        if (targetRb == null)
+        {
+            targetRb = GetComponentInChildren<Rigidbody>();
+            if (targetRb != null)
+                Debug.Log($"[ImuSensor] Rigidbody 자동 탐색됨: {targetRb.gameObject.name}");
+            else
+                Debug.LogWarning("[ImuSensor] Rigidbody를 찾지 못했습니다. 씬의 오브젝트에 Rigidbody를 추가하거나 Target Rb를 연결하세요.");
+        }
+
         if (targetRb != null)
             prevVelocity = targetRb.velocity;
     }
@@ -957,7 +970,10 @@ public class ImuSensor : MonoBehaviour
 
 1. Hierarchy에서 **imu_link** 선택
 2. **Add Component > ImuSensor** 추가
-3. **Target Rb** = `turtlebot3_burger` (Rigidbody)
+3. **Target Rb = 비워둬도 됩니다.** (6-3 코드의 `Start()`가 Rigidbody를 `GetComponentInChildren`으로 자동 탐색)
+   - ⚠️ 이 프로젝트의 Rigidbody는 `TurtleBot3Setup.Awake()`가 **Play 시점에 추가**하므로, 에디터에서
+     드래그하려 해도 전부 X로 보입니다. 드래그하지 말고 **비워두세요.**
+   - Play 시 콘솔에 `[ImuSensor] Rigidbody 자동 탐색됨: turtlebot3_burger` 로그가 찍히면 정상입니다.
 4. (선택) 확인용 OnGUI 추가
 
 **ImuSensor에 확인용 추가:**
@@ -965,9 +981,11 @@ public class ImuSensor : MonoBehaviour
     void OnGUI()
     {
         GUILayout.BeginArea(new Rect(10, 140, 300, 120));
+        GUI.contentColor = Color.yellow; // 글씨 색 변경
         GUILayout.Label("-- IMU --");
         GUILayout.Label($"Gyro: ({angularVelocity.x:F2}, {angularVelocity.y:F2}, {angularVelocity.z:F2}) rad/s");
         GUILayout.Label($"Accel: ({linearAcceleration.x:F2}, {linearAcceleration.y:F2}, {linearAcceleration.z:F2}) m/s²");
+        GUI.contentColor = Color.white; // 원래 색(흰색) 복원
         GUILayout.EndArea();
     }
 ```
