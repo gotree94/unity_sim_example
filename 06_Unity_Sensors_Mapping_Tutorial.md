@@ -1162,6 +1162,764 @@ UnityBridge (unity_bridge.py, TCP 클라이언트 → host.docker.internal:8765)
 | 2 | `unity_bridge.py` | `D:\github\unity_sim_example\07_ROS2_RViz_Bridge\` | TCP 클라이언트 → ROS2 토픽 발행 |
 | 3 | `rviz_map_view.rviz` | 같은 폴더 | RViz2 표시 설정 (Fixed Frame = `map`) |
 
+
+**RosBridge**
+
+```
+using UnityEngine;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+
+// ############################################################
+// # RosBridge
+// # 역할: Unity(TurtleBot3 시뮬레이션)에서 만든 센서/맵 데이터를
+// #       TCP/IP로 Docker 안의 ROS2(Python 브릿지 노드)에게 보내,
+// #       RViz2에서 실제 /map, /scan, /odom, /tf로 표시하게 합니다.
+// #
+// # 통신 구조 (이 저장소 3단계 TCPServer 패턴과 동일):
+// #    Unity(RosBridge, 서버) 127.0.0.1:8765
+// #       ↑ TCP
+// #    Docker 컨테이너(ros_jazzy1) unity_bridge.py (클라이언트)
+// #       → host.docker.internal:8765 로 접속 (Docker -p 8765:8765)
+// #       → /map /scan /odom /tf 를 ROS2 토픽으로 발행
+// #       → RViz2에서 표시
+// #
+// # 프로토콜 (이진 프레임, little-endian, C#/Python 양쪽 동일):
+// #   [헤더 11바이트]
+// #     uint32 magic     = 0x31524254 ("TBR1")
+// #     uint8  msgType   = 1:map / 2:scan / 3:odom
+// #     uint32 payloadLen
+// #   [map payload]
+// #     float32 resolution, int32 width, int32 height
+// #     float64 origin_x, float64 origin_y, float64 origin_yaw
+// #     uint32 dataLen, int8[dataLen]  (-1 unknown / 0 free / 100 occupied)
+// #   [scan payload]
+// #     float32 angle_min, angle_max, angle_increment
+// #     float32 range_min, range_max
+// #     uint32 rayCount, float32[rayCount]
+// #   [odom payload]
+// #     float64 x, float64 z (Unity 위치, Python에서 z→ROS y 변환)
+// #     float64 yaw_deg (Unity 요각, Python에서 ROS yaw로 변환)
+// #     float64 linear_x (전진속도), float64 angular_z (각속도)
+// ############################################################
+public class RosBridge : MonoBehaviour
+{
+    [Header("TCP 서버 설정")]
+    [Tooltip("리스닝 포트 (Docker의 -p 8765:8765 와 일치)")]
+    public int port = 8765;
+    [Tooltip("데이터 발행 주기(Hz). 너무 빠르면 맵 200x200 전송이 부담됨 (기본 10Hz)")]
+    public float publishRate = 10f;
+
+    [Header("데이터 참조 (Inspector 연결 or 자동 탐색)")]
+    [Tooltip("LidarSensor (base_scan) — /scan 전송용")]
+    public LidarSensor lidar;
+    [Tooltip("MapRenderer (MapDisplay) — /map 전송용")]
+    public MapRenderer mapRenderer;
+    [Tooltip("로봇 루트 Transform (turtlebot3_burger) — /odom 위치/회전 기준")]
+    public Transform robotTransform;
+
+    // ----- 연결 상태 (Inspector에서 확인용) -----
+    [Header("상태")]
+    public int connectedClients = 0;
+    public bool isServerRunning = false;
+
+    // TCP 서버 멤버
+    private TcpListener server;
+    private Thread serverThread;
+    private bool isRunning = false;
+
+    // 연결된 클라이언트 목록 (백그라운드 스레드와 메인 스레드가 함께 접근 → lock 필요)
+    private readonly List<TcpClient> clients = new List<TcpClient>();
+    private readonly object clientLock = new object();
+
+    // 발행 타이머
+    private float sendTimer = 0f;
+
+    void Start()
+    {
+        // Inspector에서 연결 안 하면 자동으로 씬에서 찾아줍니다.
+        if (lidar == null)
+            lidar = FindFirstObjectByType<LidarSensor>();
+        if (mapRenderer == null)
+            mapRenderer = FindFirstObjectByType<MapRenderer>();
+        if (robotTransform == null && lidar != null && lidar.transform.parent != null)
+            robotTransform = lidar.transform.root;
+
+        if (lidar == null || mapRenderer == null)
+        {
+            Debug.LogWarning("[RosBridge] LidarSensor 또는 MapRenderer를 찾지 못했습니다. Inspector에서 연결해주세요.");
+            return;
+        }
+
+        StartServer();
+
+        // 초기화 확인용 로그
+        Debug.Log($"[RosBridge] 시작됨. 포트={port}, lidar={lidar.gameObject.name}, mapRenderer={mapRenderer.gameObject.name}, robot={robotTransform?.name}");
+    }
+
+    void OnDestroy()
+    {
+        StopServer();
+    }
+
+    void OnApplicationQuit()
+    {
+        StopServer();
+    }
+
+    // ---------- TCP 서버 수명 관리 ----------
+
+    // TCP 서버를 시작하고, 백그라운드 스레드에서 클라이언트 연결을 기다립니다.
+    void StartServer()
+    {
+        try
+        {
+            // IPAddress.Any(0.0.0.0)으로 바인딩해야 Docker 컨테이너의 host.docker.internal 접속이 도달합니다.
+            server = new TcpListener(IPAddress.Any, port);
+            server.Start();
+            isRunning = true;
+            isServerRunning = true;
+
+            serverThread = new Thread(AcceptLoop);
+            serverThread.IsBackground = true;
+            serverThread.Start();
+
+            Debug.Log($"[RosBridge] TCP 서버 시작됨 - 0.0.0.0:{port}");
+            Debug.Log($"[RosBridge] 컨테이너의 unity_bridge.py가 host.docker.internal:{port} 로 접속 대기 중...");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[RosBridge] 서버 시작 실패: {e.Message} (포트 {port}가 이미 사용 중일 수 있습니다)");
+        }
+    }
+
+    void StopServer()
+    {
+        isRunning = false;
+        isServerRunning = false;
+
+        try
+        {
+            server?.Stop();
+        }
+        catch { }
+
+        lock (clientLock)
+        {
+            foreach (var c in clients)
+            {
+                try { c.Close(); } catch { }
+            }
+            clients.Clear();
+            connectedClients = 0;
+        }
+    }
+
+    // 연결 수락 루프 (백그라운드 스레드)
+    void AcceptLoop()
+    {
+        while (isRunning)
+        {
+            try
+            {
+                TcpClient client = server.AcceptTcpClient();
+                lock (clientLock)
+                {
+                    clients.Add(client);
+                    connectedClients = clients.Count;
+                }
+                Debug.Log($"[RosBridge] 클라이언트 연결됨! (현재 {connectedClients}개)");
+            }
+            catch
+            {
+                // 서버 중지 또는 accept 오류 시 루프 종료
+                break;
+            }
+        }
+    }
+
+    // ---------- 발행 루프 (메인 스레드, Unity API 안전) ----------
+
+    void Update()
+    {
+        if (!isRunning || lidar == null || mapRenderer == null) return;
+
+        sendTimer += Time.deltaTime;
+        if (sendTimer >= 1f / publishRate)
+        {
+            sendTimer = 0f;
+            BroadcastFrames();
+        }
+    }
+
+    // 모든 클라이언트에게 map/scan/odom 프레임을 전송
+    void BroadcastFrames()
+    {
+        lock (clientLock)
+        {
+            for (int i = clients.Count - 1; i >= 0; i--)
+            {
+                TcpClient client = clients[i];
+                try
+                {
+                    if (!client.Connected)
+                    {
+                        clients.RemoveAt(i);
+                        continue;
+                    }
+
+                    byte[] mapData = SerializeMap();
+                    byte[] scanData = SerializeScan();
+                    byte[] odomData = SerializeOdom();
+
+                    NetworkStream stream = client.GetStream();
+                    stream.Write(mapData, 0, mapData.Length);
+                    stream.Write(scanData, 0, scanData.Length);
+                    stream.Write(odomData, 0, odomData.Length);
+                    stream.Flush();
+                }
+                catch
+                {
+                    // 전송 실패(연결 끊김 등) → 클라이언트 제거
+                    try { client.Close(); } catch { }
+                    clients.RemoveAt(i);
+                }
+            }
+            connectedClients = clients.Count;
+        }
+    }
+
+    // ---------- 직렬화 ----------
+
+    // /map 프레임 만들기 (nav_msgs/OccupancyGrid 데이터)
+    byte[] SerializeMap()
+    {
+        using (MemoryStream ms = new MemoryStream())
+        using (BinaryWriter bw = new BinaryWriter(ms))
+        {
+            // 헤더: magic + msgType(1=map) + payloadLen(나중에 채움)
+            bw.Write(0x31524254u);          // "TBR1"
+            bw.Write((byte)1);              // 1 = map
+            long lenPos = ms.Position;
+            bw.Write(0u);                   // payloadLen 자리
+
+            // payload
+            bw.Write(mapRenderer.resolution);                    // float32
+            bw.Write(mapRenderer.gridSize);                      // int32 width
+            bw.Write(mapRenderer.gridSize);                      // int32 height
+            Vector3 origin = mapRenderer.GetMapOrigin();         // 좌하단 원점
+            bw.Write((double)origin.x);                          // float64 origin_x
+            bw.Write((double)origin.z);                          // float64 origin_y (Unity z ↔ ROS y)
+            bw.Write(0.0);                                       // float64 origin_yaw
+
+            sbyte[] occ = mapRenderer.GetOccupancyData();
+            bw.Write((uint)occ.Length);                          // dataLen
+            foreach (sbyte v in occ) bw.Write(unchecked((byte)v)); // 1바이트로 기록 (-1→255, Python에서 signed로 해석)
+
+            // payloadLen 채우기
+            long endPos = ms.Position;
+            ms.Position = lenPos;
+            bw.Write((uint)(endPos - lenPos - 4));
+            ms.Position = endPos;
+
+            return ms.ToArray();
+        }
+    }
+
+    // /scan 프레임 만들기 (sensor_msgs/LaserScan 데이터)
+    // 각도 규칙 정합: Unity는 정면(+Z)·동쪽으로 각도 증가(시계방향),
+    // ROS LaserScan은 센서 +X(전방)·+Y 방향으로 증가(반시계방향) = 좌우 반대.
+    // 따라서 ranges를 [역순]으로 보내 map/로봇/스캔이 일치하게 만든다.
+    byte[] SerializeScan()
+    {
+        using (MemoryStream ms = new MemoryStream())
+        using (BinaryWriter bw = new BinaryWriter(ms))
+        {
+            bw.Write(0x31524254u);
+            bw.Write((byte)2);              // 2 = scan
+            long lenPos = ms.Position;
+            bw.Write(0u);
+
+            int rayCount = lidar.rayCount;
+            bw.Write(0f);                                       // angle_min = 0
+            bw.Write((float)(Mathf.PI * 2));                    // angle_max = 2π
+            bw.Write((float)(Mathf.PI * 2 / rayCount));         // angle_increment
+            bw.Write(lidar.rangeMin);                           // range_min
+            bw.Write(lidar.rangeMax);                           // range_max
+            bw.Write((uint)rayCount);                           // rayCount
+
+            // ranges: Infinity는 ROS에 못 보내므로 rangeMax로 clamp + 역순 전송
+            for (int i = 0; i < rayCount; i++)
+            {
+                float r = lidar.ranges[rayCount - 1 - i];
+                if (float.IsInfinity(r) || float.IsNaN(r))
+                    r = lidar.rangeMax;
+                bw.Write(r);
+            }
+
+            long endPos = ms.Position;
+            ms.Position = lenPos;
+            bw.Write((uint)(endPos - lenPos - 4));
+            ms.Position = endPos;
+
+            return ms.ToArray();
+        }
+    }
+
+    // /odom 프레임 만들기 (nav_msgs/Odometry + odom→base_footprint TF)
+    // 좌표 변환 주의: Unity(x, z, yaw) → ROS(x, y, yaw) 변환은 Python 쪽에서 수행합니다.
+    //   - ROS(위치) = (Unity x, Unity z, 0)
+    //   - ROS(요각) = π/2 - Unity yaw (프레임 정합, REP-103)
+    byte[] SerializeOdom()
+    {
+        using (MemoryStream ms = new MemoryStream())
+        using (BinaryWriter bw = new BinaryWriter(ms))
+        {
+            bw.Write(0x31524254u);
+            bw.Write((byte)3);              // 3 = odom
+            long lenPos = ms.Position;
+            bw.Write(0u);
+
+            // 위치: 로봇 루트 또는 센서 기준
+            Vector3 pos = (robotTransform != null) ? robotTransform.position : lidar.transform.position;
+            float yawDeg = (robotTransform != null) ? robotTransform.eulerAngles.y : lidar.transform.eulerAngles.y;
+
+            // 속도: Rigidbody가 있으면 사용
+            float linearX = 0f;
+            float angularZ = 0f;
+            if (robotTransform != null)
+            {
+                Rigidbody rb = robotTransform.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    Vector3 localVel = robotTransform.InverseTransformDirection(rb.velocity);
+                    linearX = localVel.z;                  // 전진 = 로컬 +Z
+                    angularZ = rb.angularVelocity.y;       // 요 회전 속도
+                }
+            }
+
+            bw.Write((double)pos.x);         // x
+            bw.Write((double)pos.z);         // z (Python에서 ROS y로 배치)
+            bw.Write((double)yawDeg);        // Unity 요각(deg) — Python에서 변환
+            bw.Write((double)linearX);       // 전진 속도
+            bw.Write((double)angularZ);      // 각속도
+
+            long endPos = ms.Position;
+            ms.Position = lenPos;
+            bw.Write((uint)(endPos - lenPos - 4));
+            ms.Position = endPos;
+
+            return ms.ToArray();
+        }
+    }
+
+    // ---------- 유틸 ----------
+
+    // Unity 버전별 호환 검색: 2023+는 FindFirstObjectByType, 이전 버전은 FindObjectOfType 사용
+    private static T FindFirstObjectByType<T>() where T : UnityEngine.Object
+    {
+#if UNITY_2023_1_OR_NEWER
+        return UnityEngine.Object.FindFirstObjectByType<T>();
+#else
+        return UnityEngine.Object.FindObjectOfType<T>();
+#endif
+    }
+}
+```
+
+**07_ROS2_RViz_Bridge/rviz_map_view.rviz**
+
+
+```
+# RViz2 설정 파일 — Unity TurtleBot3 시뮬레이션 데이터 표시용
+# 사용: rviz2 -d /mnt/d/github/unity_sim_example/07_ROS2_RViz_Bridge/rviz_map_view.rviz
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+    Views:
+      - Class: rviz_default_plugins/Orbit
+        Name: Orbit View
+Visibility:
+  Grid: true
+  Map: true
+  LaserScan: true
+  TF: true
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Value: true
+      Plane Cell Count: 20
+      Plane Cell Size: 1
+      Plane State: XY
+    - Alpha: 0.9
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: true
+      Name: Map
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /map
+      Update Topic:
+        QOS:
+          Depth: 1
+          Durability Policy: Transient Local
+          Reliability Policy: Reliable
+        Value: /map
+      Value: true
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: LaserScan
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /scan
+      Value: true
+      Size (Pixels): 3
+      Color: 255; 0; 0
+      Color Style: Flat Color
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Value: true
+      Show Names: true
+      Show Arrows: false
+      Frame Timeout: 15
+  Global Options:
+    Background Color: 77; 77; 77
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Window Geometry:
+    Width: 1400
+    Height: 900
+```
+
+**07_ROS2_RViz_Bridgeunity_bridge.py**
+
+
+```
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+unity_bridge.py
+==============
+Unity(TurtleBot3 시뮬레이션) ↔ ROS2 Jazzy 브릿지 노드.
+
+동작 구조:
+    Unity  (RosBridge.cs, TCP 서버)  0.0.0.0:8765  (Windows)
+       ↑ TCP
+    본 노드 (TCP 클라이언트)  host.docker.internal:8765  (Docker ros_jazzy1)
+       → ROS2 토픽 발행: /map, /scan, /odom, /tf, /tf_static
+       → RViz2에서 표시
+
+실행 방법 (Docker 컨테이너 ros_jazzy1 안에서):
+    python3 /mnt/d/github/unity_sim_example/07_ROS2_RViz_Bridge/unity_bridge.py
+
+프로토콜 (little-endian, Unity RosBridge.cs와 동일):
+    [헤더 11바이트] uint32 magic("TBR1"), uint8 msgType, uint32 payloadLen
+    [map  =1] float32 res, int32 w, int32 h,
+              float64 ox, float64 oy, float64 oyaw,
+              uint32 dataLen, int8[dataLen]
+    [scan =2] float32 angle_min, angle_max, angle_increment,
+              float32 range_min, range_max, uint32 rayCount, float32[rayCount]
+    [odom =3] float64 x, float64 z, float64 yaw_deg(Unity), float64 linear_x, float64 angular_z
+
+좌표 변환 (Unity ↔ ROS):
+    Unity(x 오른쪽, z 북쪽, y 위) → ROS(x 동쪽, y 북쪽, z 위)
+      - ROS 위치 = (Unity x, Unity z, 0)
+      - ROS 요각 = π/2 - yaw_deg(Unity)  (REP-103 기준 프레임 정합)
+    TF 트리: map(=odom) → base_footprint → base_scan(lidar)
+"""
+import math
+import socket
+import struct
+import threading
+import time
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
+
+from geometry_msgs.msg import TransformStamped
+from nav_msgs.msg import OccupancyGrid, Odometry
+from sensor_msgs.msg import LaserScan
+from std_msgs.msg import Header
+from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
+
+# ROS 메시지에 사용할 프레임 이름
+FRAME_MAP = "map"
+FRAME_ODOM = "odom"
+FRAME_BASE = "base_footprint"
+FRAME_LIDAR = "base_scan"
+
+# TCP 접속 설정 (Unity RosBridge.cs와 일치)
+TCP_HOST = "host.docker.internal"
+TCP_PORT = 8765
+MAGIC = 0x31524254   # "TBR1"
+
+
+def quat_from_yaw(yaw_rad: float):
+    """z축(yaw) 회전의 쿼터니언 (x, y, z, w) 반환 (tf_transformations 없이 직접 계산)."""
+    return (0.0, 0.0, math.sin(yaw_rad * 0.5), math.cos(yaw_rad * 0.5))
+
+
+class UnityBridge(Node):
+    def __init__(self):
+        super().__init__("unity_bridge")
+
+        # --- 발행자 생성 ---
+        # /map 은 TRANSIENT_LOCAL(최신 맵 값 유지)로, /scan과 /odom은 기본 QOS로 발행.
+        qos_map = QoSProfile(
+            depth=1,
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.map_pub = self.create_publisher(OccupancyGrid, "/map", qos_map)
+        self.scan_pub = self.create_publisher(LaserScan, "/scan", 10)
+        self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
+
+        # TF 브로드캐스터
+        self.tf_broadcaster = TransformBroadcaster(self)
+        self.tf_static_broadcaster = StaticTransformBroadcaster(self)
+
+        # 정적 TF 한 번 발행: map→odom(동일), base_footprint→base_scan(0,0,0.055)
+        self.publish_static_tf()
+
+        # 연결 상태 (로드 로깅용)
+        self.connected = False
+
+    # ------------------------------------------------------------------
+    def publish_static_tf(self):
+        """정적 TF: map→odom(identity), base_footprint→base_scan(0,0,0.055)."""
+        tfs = []
+
+        # map → odom : identity (Unity 맵은 전역 고정이므로 odom=map)
+        t_om = TransformStamped()
+        t_om.header.frame_id = FRAME_MAP
+        t_om.child_frame_id = FRAME_ODOM
+        t_om.transform.translation.x = 0.0
+        t_om.transform.translation.y = 0.0
+        t_om.transform.translation.z = 0.0
+        q = quat_from_yaw(0.0)
+        t_om.transform.rotation.x, t_om.transform.rotation.y = q[0], q[1]
+        t_om.transform.rotation.z, t_om.transform.rotation.w = q[2], q[3]
+        tfs.append(t_om)
+
+        # base_footprint → base_scan : 센서 위치(0, 0, 0.055)
+        t_bs = TransformStamped()
+        t_bs.header.frame_id = FRAME_BASE
+        t_bs.child_frame_id = FRAME_LIDAR
+        t_bs.transform.translation.x = 0.0
+        t_bs.transform.translation.y = 0.0
+        t_bs.transform.translation.z = 0.055
+        q = quat_from_yaw(0.0)
+        t_bs.transform.rotation.x, t_bs.transform.rotation.y = q[0], q[1]
+        t_bs.transform.rotation.z, t_bs.transform.rotation.w = q[2], q[3]
+        tfs.append(t_bs)
+
+        # stamp 오래된 시간이면 안 되므로 현재 시간 사용
+        now = self.get_clock().now().to_msg()
+        for t in tfs:
+            t.header.stamp = now
+
+        self.tf_static_broadcaster.sendTransform(tfs)
+        self.get_logger().info(f"[유니티 브릿지] 정적 TF 발행: map→odom, {FRAME_BASE}→{FRAME_LIDAR}")
+
+    # ------------------------------------------------------------------
+    def recv_exact(self, conn, n):
+        """소켓에서 정확히 n바이트를 읽을 때까지 수신(부분 수신/헤더 분리 대응)."""
+        buf = b""
+        while len(buf) < n:
+            chunk = conn.recv(n - len(buf))
+            if not chunk:
+                raise ConnectionError("연결 종료")
+            buf += chunk
+        return buf
+
+    # ------------------------------------------------------------------
+    def handle_frame(self, msg_type: int, payload: bytes):
+        """수신한 프레임을 msg_type에 따라 ROS2 토픽으로 발행한다."""
+        if msg_type == 1:
+            self.handle_map(payload)
+        elif msg_type == 2:
+            self.handle_scan(payload)
+        elif msg_type == 3:
+            self.handle_odom(payload)
+        else:
+            self.get_logger().warn(f"[브릿지] 알 수 없는 msgType: {msg_type}")
+
+    # ------------------- /map -------------------
+    def handle_map(self, payload: bytes):
+        # float32(4)+int32×2(8)+float64×3(24) = 36
+        head = struct.unpack_from("<fii", payload, 0)
+        res, w, h = head
+        ox, oy, oyaw = struct.unpack_from("<ddd", payload, 36)
+        data_len = struct.unpack_from("<I", payload, 60)[0]
+        raw = payload[64:64 + data_len]
+        # int8 배열 → 0~100(-1=unknown) 점유값
+        data = list(struct.unpack(f"<{data_len}b", raw))
+
+        msg = OccupancyGrid()
+        msg.header = Header()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = FRAME_MAP
+        msg.info.resolution = float(res)
+        msg.info.width = w
+        msg.info.height = h
+        msg.info.origin.position.x = ox          # 좌하단 원점 (Unity x)
+        msg.info.origin.position.y = oy          # 좌하단 원점 (Unity z → ROS y)
+        msg.info.origin.position.z = 0.0
+        # yaw=0 (맵은 정북 정렬)
+        msg.info.origin.orientation.x = 0.0
+        msg.info.origin.orientation.y = 0.0
+        msg.info.origin.orientation.z = 0.0
+        msg.info.origin.orientation.w = 1.0
+        msg.data = data
+
+        self.map_pub.publish(msg)
+
+    # ------------------- /scan -------------------
+    def handle_scan(self, payload: bytes):
+        # float32×5(20) + uint32(4) = 24, 이후 float32[rayCount]
+        (a_min, a_max, a_inc, r_min, r_max) = struct.unpack_from("<fffff", payload, 0)
+        ray_count = struct.unpack_from("<I", payload, 20)[0]
+        ranges = struct.unpack_from(f"<{ray_count}f", payload, 24)
+
+        msg = LaserScan()
+        msg.header = Header()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = FRAME_LIDAR
+        msg.angle_min = float(a_min)
+        msg.angle_max = float(a_max)
+        msg.angle_increment = float(a_inc)
+        msg.range_min = float(r_min)
+        msg.range_max = float(r_max)
+        msg.ranges = list(ranges)
+
+        self.scan_pub.publish(msg)
+
+    # ------------------- /odom + TF -------------------
+    def handle_odom(self, payload: bytes):
+        # float64 × 5: x, z, yaw_deg(Unity), linear_x, angular_z
+        x, z, yaw_deg, lin_x, ang_z = struct.unpack("<ddddd", payload)
+
+        # 좌표 변환: Unity(x, z) → ROS(x, y), 요각 변환
+        px, py, pz = x, z, 0.0
+        yaw_ros = math.pi * 0.5 - math.radians(yaw_deg)
+
+        # --- /odom 메시지 (Odometry) ---
+        odom = Odometry()
+        odom.header = Header()
+        odom.header.stamp = self.get_clock().now().to_msg()
+        odom.header.frame_id = FRAME_ODOM
+        odom.child_frame_id = FRAME_BASE
+        odom.pose.pose.position.x = px
+        odom.pose.pose.position.y = py
+        odom.pose.pose.position.z = pz
+        qx, qy, qz, qw = quat_from_yaw(yaw_ros)
+        odom.pose.pose.orientation.x = qx
+        odom.pose.pose.orientation.y = qy
+        odom.pose.pose.orientation.z = qz
+        odom.pose.pose.orientation.w = qw
+        # 공분산은 0(미지)으로 두면 RViz Odometry 표시에 문제없음
+        odom.twist.twist.linear.x = lin_x
+        odom.twist.twist.angular.z = ang_z
+
+        self.odom_pub.publish(odom)
+
+        # --- TF: odom → base_footprint ---
+        tf = TransformStamped()
+        tf.header.stamp = odom.header.stamp
+        tf.header.frame_id = FRAME_ODOM
+        tf.child_frame_id = FRAME_BASE
+        tf.transform.translation.x = px
+        tf.transform.translation.y = py
+        tf.transform.translation.z = pz
+        tf.transform.rotation.x = qx
+        tf.transform.rotation.y = qy
+        tf.transform.rotation.z = qz
+        tf.transform.rotation.w = qw
+
+        self.tf_broadcaster.sendTransform(tf)
+
+    # ------------------------------------------------------------------
+    def run(self):
+        """Unity(TCP 서버)에 접속하여 프레임을 읽고 발행하는 메인 루프."""
+        self.get_logger().info(
+            f"[유니티 브릿지] 대기 중: Unity가 {TCP_HOST}:{TCP_PORT}에서 서버를 열기를 기다립니다..."
+        )
+
+        while rclpy.ok():
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                sock.settimeout(2.0)   # 재접속 대기용 타임아웃
+                sock.connect((TCP_HOST, TCP_PORT))
+                self.connected = True
+                self.get_logger().info("[유니티 브릿지] Unity에 연결됨! 데이터 수신 시작.")
+
+                while rclpy.ok():
+                    # 프레임 헤더: magic(4) + msgType(1) + payloadLen(4)
+                    header = self.recv_exact(sock, 9)
+                    magic, msg_type, payload_len = struct.unpack("<IBI", header)
+                    if magic != MAGIC:
+                        self.get_logger().warn(f"[브릿지] magic 불일치: {hex(magic)} — 동기화 끊김, 접속 재시도")
+                        break
+                    payload = self.recv_exact(sock, payload_len)
+                    self.handle_frame(msg_type, payload)
+
+            except (ConnectionError, socket.timeout, OSError) as e:
+                self.connected = False
+                self.get_logger().warn(f"[유니티 브릿지] 연결 끊김/오류: {e} — 2초 후 재접속")
+                time.sleep(2.0)
+            except Exception as e:   # 파싱 오류 시에도 루프 유지
+                self.connected = False
+                self.get_logger().error(f"[유니티 브릿지] 처리 오류: {e}")
+                time.sleep(1.0)
+            finally:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+                self.connected = False
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    bridge = UnityBridge()
+    try:
+        bridge.run()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        bridge.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+
 **실행 순서** (Unity 씬에 `RosBridge` 컴포넌트를 아무 GameObject에 추가 후):
 
 1. Unity 에디터에서 **Play** 실행 → 하단 로그에 `[RosBridge] TCP 서버 시작됨 - 0.0.0.0:8765` 확인.
