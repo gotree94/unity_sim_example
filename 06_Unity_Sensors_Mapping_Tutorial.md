@@ -785,11 +785,13 @@ public class OdometrySensor : MonoBehaviour
 
 OdometrySensor에 표시 확인용 메서드를 추가하여 로그로 확인:
 
+> ✅ **프로젝트 파일에는 이미 반영되어 있습니다.** 아래 코드는 참고용으로, 직접 넣으려면
+> `OdometrySensor.cs`의 **`FindChildRecursive(...)` 메서드 아래, 클래스 닫는 중괄호 `}` 앞**에 넣으면 됩니다.
+
 ```csharp
-    // Inspector에서 수동 호출 가능한 확인용 (또는 Update에서 로그)
+    // 화면 좌상단에 오도메트리 출력 (Inspector에서 확인하지 않아도 게임 뷰에서 바로 확인)
     void OnGUI()
     {
-        // 화면 좌상단에 오도메트리 출력
         GUILayout.BeginArea(new Rect(10, 10, 300, 120));
         GUILayout.Label($"Pos: ({position.x:F2}, {position.z:F2})");
         GUILayout.Label($"Yaw: {yaw * Mathf.Rad2Deg:F1}°");
