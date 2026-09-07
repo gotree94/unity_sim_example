@@ -160,7 +160,6 @@ public class LidarSensor : MonoBehaviour
 
     private Transform rotator;
     private LineRenderer[] lines;      // 레이저 링을 그리는 라인렌더러
-    private int lastPointIndex = -1;
 
     void Awake()
     {
@@ -1096,6 +1095,7 @@ Project 창 → **Assets** 우클릭 → **Create > C# Script** → 이름: `Cam
 
 ```csharp
 using UnityEngine;
+using Unity.Collections;   // NativeArray (GetRawTextureData) 사용
 
 // ############################################################
 // # CameraSensor
@@ -1135,7 +1135,6 @@ public class CameraSensor : MonoBehaviour
     private Camera cam;                 // 영상 렌더링용 Unity Camera
     private RenderTexture rt;           // 렌더링 대기 렌더텍스처
     private Texture2D grayTexture;      // 흑백 표시용 텍스처
-    private Color32[] pixels;           // GetPixels32 재사용 버퍼 (매 프레임 new 할당 방지 → GC 부하 감소)
     private float captureTimer = 0f;
 
     void Awake()
@@ -1159,7 +1158,6 @@ public class CameraSensor : MonoBehaviour
         grayBytes = new byte[width * height];
         capturedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
         grayTexture = new Texture2D(width, height, TextureFormat.R8, false);
-        pixels = new Color32[width * height];          // 픽셀 읽기 버퍼는 한 번만 할당
     }
 
     void Start()
@@ -1194,16 +1192,12 @@ public class CameraSensor : MonoBehaviour
         RenderTexture.active = prevActive;
 
         // ③ 원본 컬러 데이터로 저장 (픽셀 1개 = R,G,B,A 4바이트)
-        //    GetPixels32(pixels) 재사용 버퍼 버전을 쓰면 매 캡처마다 새 배열을 할당하지 않아
-        //    GC(가비지 컬렉션) 부하가 크게 줄어듭니다. (30fps 640x480 캡처에서 성능 저하의 주범)
-        capturedTexture.GetPixels32(pixels);
-        for (int i = 0; i < pixels.Length; i++)
-        {
-            colorBytes[i * 4 + 0] = pixels[i].r;
-            colorBytes[i * 4 + 1] = pixels[i].g;
-            colorBytes[i * 4 + 2] = pixels[i].b;
-            colorBytes[i * 4 + 3] = pixels[i].a;
-        }
+        //    GetRawTextureData<byte>()는 텍스처 내부 픽셀 버퍼의 네이티브 참조를 반환하고,
+        //    preallocated colorBytes로 바로 복사하므로 매 캡처 배열 할당이 없어 GC 부하가 감소합니다.
+        //    (GetPixels32(Color32[]) 재사용 오버로드는 Unity 버전에 따라 없을 수 있어 사용하지 않습니다)
+        NativeArray<byte> raw = capturedTexture.GetRawTextureData<byte>();
+        raw.CopyTo(colorBytes);   // RGBA32 순서 그대로 복사
+        raw.Dispose();            // 네이티브 참조 해제 (누수 방지)
 
         // ④ 영상 처리 예제: 컬러 → Grayscale (ITU-R BT.601 계수: Y = 0.299R + 0.587G + 0.114B)
         for (int i = 0; i < grayBytes.Length; i++)
@@ -1370,7 +1364,7 @@ MapDisplay (Quad + MapRenderer)     (맵)
 | camera_link에 CameraSensor가 부착됐는지 | Add Component 확인 |
 | showOnScreen가 체크인지 | Inspector 확인 |
 | Main Camera 대신 센서 카메라로만 보고 있는지 | 센서 카메라는 targetTexture 전용이므로 Game 뷰 주 화면은 Main Camera 사용 |
-| 캡처/화면이 뚝뚝 끊기는지 (성능) | 7-3 코드처럼 `GetPixels32(pixels)` 재사용 버퍼를 썼는지 확인 후, captureRate를 15~10으로, 해상도를 320x240으로 낮춤 |
+| 캡처/화면이 뚝뚝 끊기는지 (성능) | 7-3 코드처럼 `GetRawTextureData<byte>()` 복사(GC-free) 방식인지 확인 후, captureRate를 15~10으로, 해상도를 320x240으로 낮춤 |
 | OnGUI 패널끼리 겹치는지 | 카메라 패널은 우상단, 맵 패널(4장)은 좌상단 아래라 기본적으로 겹치지 않음 |
 
 ---
@@ -1806,7 +1800,8 @@ public class RosBridge : MonoBehaviour
     // ---------- 유틸 ----------
 
     // Unity 버전별 호환 검색: 2023+는 FindFirstObjectByType, 이전 버전은 FindObjectOfType 사용
-    private static T FindFirstObjectByType<T>() where T : UnityEngine.Object
+    // (Unity 2023.1+의 Object.FindFirstObjectByType와 이름이 겹쳐 CS0108 경고가 나므로 new 지정)
+    private new static T FindFirstObjectByType<T>() where T : UnityEngine.Object
     {
 #if UNITY_2023_1_OR_NEWER
         return UnityEngine.Object.FindFirstObjectByType<T>();
