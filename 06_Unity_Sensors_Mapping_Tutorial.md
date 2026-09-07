@@ -1135,6 +1135,7 @@ public class CameraSensor : MonoBehaviour
     private Camera cam;                 // 영상 렌더링용 Unity Camera
     private RenderTexture rt;           // 렌더링 대기 렌더텍스처
     private Texture2D grayTexture;      // 흑백 표시용 텍스처
+    private byte[] grayRgba;            // 흑백 표시용 RGBA 버퍼 (회색 = R=G=B)
     private float captureTimer = 0f;
 
     void Awake()
@@ -1155,9 +1156,10 @@ public class CameraSensor : MonoBehaviour
 
         // 3) 데이터 버퍼/텍스처 초기화
         colorBytes = new byte[width * height * 4];   // RGBA32 (픽셀당 4바이트)
-        grayBytes = new byte[width * height];
+        grayBytes = new byte[width * height];        // 흑백(단채널) 데이터 (외부 전송용)
+        grayRgba = new byte[width * height * 4];     // 흑백 표시용 RGBA (GUI는 단채널 R8을 그리면 빨갛게 나온다)
         capturedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-        grayTexture = new Texture2D(width, height, TextureFormat.R8, false);
+        grayTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
     }
 
     void Start()
@@ -1207,7 +1209,17 @@ public class CameraSensor : MonoBehaviour
             byte b = colorBytes[i * 4 + 2];
             grayBytes[i] = (byte)(0.299f * r + 0.587f * g + 0.114f * b);
         }
-        grayTexture.SetPixelData(grayBytes, 0);
+        // 표시용: R8(단채널) 텍스처를 GUI로 그리면 붉은색만 나오므로,
+        // 회색(R=G=B)으로 채운 RGBA 버퍼를 만들어 GPU에 올립니다.
+        for (int i = 0; i < grayBytes.Length; i++)
+        {
+            byte gv = grayBytes[i];
+            grayRgba[i * 4 + 0] = gv;
+            grayRgba[i * 4 + 1] = gv;
+            grayRgba[i * 4 + 2] = gv;
+            grayRgba[i * 4 + 3] = 255;
+        }
+        grayTexture.SetPixelData(grayRgba, 0);
         grayTexture.Apply();
     }
 
