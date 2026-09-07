@@ -1135,6 +1135,7 @@ public class CameraSensor : MonoBehaviour
     private Camera cam;                 // 영상 렌더링용 Unity Camera
     private RenderTexture rt;           // 렌더링 대기 렌더텍스처
     private Texture2D grayTexture;      // 흑백 표시용 텍스처
+    private Color32[] pixels;           // GetPixels32 재사용 버퍼 (매 프레임 new 할당 방지 → GC 부하 감소)
     private float captureTimer = 0f;
 
     void Awake()
@@ -1158,6 +1159,7 @@ public class CameraSensor : MonoBehaviour
         grayBytes = new byte[width * height];
         capturedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
         grayTexture = new Texture2D(width, height, TextureFormat.R8, false);
+        pixels = new Color32[width * height];          // 픽셀 읽기 버퍼는 한 번만 할당
     }
 
     void Start()
@@ -1192,7 +1194,9 @@ public class CameraSensor : MonoBehaviour
         RenderTexture.active = prevActive;
 
         // ③ 원본 컬러 데이터로 저장 (픽셀 1개 = R,G,B,A 4바이트)
-        Color32[] pixels = capturedTexture.GetPixels32();
+        //    GetPixels32(pixels) 재사용 버퍼 버전을 쓰면 매 캡처마다 새 배열을 할당하지 않아
+        //    GC(가비지 컬렉션) 부하가 크게 줄어듭니다. (30fps 640x480 캡처에서 성능 저하의 주범)
+        capturedTexture.GetPixels32(pixels);
         for (int i = 0; i < pixels.Length; i++)
         {
             colorBytes[i * 4 + 0] = pixels[i].r;
@@ -1245,7 +1249,7 @@ public class CameraSensor : MonoBehaviour
 > ⚠️ **주의사항**
 > - **Main Camera는 그대로 둡니다.** 센서 카메라는 `targetTexture`가 지정되어 Game 뷰 화면에는 그려지지 않고 RenderTexture에만 그립니다. 주 화면은 기존 Main Camera가 담당합니다.
 > - **화면(패널)에 로봇 몸통(lds, 바퀴)이 보여도 정상입니다.** 실제 로봇 카메라도 자기 몸 일부가 보입니다. 그것을 제외하고 싶으면 `cam.cullingMask`에서 로봇 레이어를 빼면 되지만, 여기서는 학습 목적으로 그대로 둡니다.
-> - **성능**: 카메라를 30fps로 계속 캡처하면 LiDAR/맵핑과 함께 부하가 커질 수 있습니다. 느려지면 `captureRate`를 15~10으로 줄이거나 `width/height`를 320x240으로 낮춥니다.
+> - **성능**: 카메라 캡처는 GPU→CPU 픽셀 읽기(`ReadPixels`)라 GPU 렌더링 파이프라인을 잠시 멈추게(스털) 합니다. 위처럼 재사용 버퍼로 GC 부하를 없애도 여전히 느리면(`captureRate`=15~10, `width/height`=320x240)으로 낮춥니다.
 
 ### 7-4. 스크립트 연결 (장착)
 
@@ -1366,7 +1370,7 @@ MapDisplay (Quad + MapRenderer)     (맵)
 | camera_link에 CameraSensor가 부착됐는지 | Add Component 확인 |
 | showOnScreen가 체크인지 | Inspector 확인 |
 | Main Camera 대신 센서 카메라로만 보고 있는지 | 센서 카메라는 targetTexture 전용이므로 Game 뷰 주 화면은 Main Camera 사용 |
-| 캡처/화면이 뚝뚝 끊기는지 (성능) | captureRate를 15~10으로, 해상도를 320x240으로 낮춤 |
+| 캡처/화면이 뚝뚝 끊기는지 (성능) | 7-3 코드처럼 `GetPixels32(pixels)` 재사용 버퍼를 썼는지 확인 후, captureRate를 15~10으로, 해상도를 320x240으로 낮춤 |
 | OnGUI 패널끼리 겹치는지 | 카메라 패널은 우상단, 맵 패널(4장)은 좌상단 아래라 기본적으로 겹치지 않음 |
 
 ---
