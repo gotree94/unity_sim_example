@@ -1116,8 +1116,8 @@ public class CameraSensor : MonoBehaviour
     public int width = 640;
     [Tooltip("영상 세로 해상도(픽셀)")]
     public int height = 480;
-    [Tooltip("캡처 주기(Hz). 실제 turtlebot3 기본 30Hz")]
-    public float captureRate = 30f;
+    [Tooltip("CPU 데이터 캡처 주기(Hz). 기본 10Hz — 화면 표시는 RenderTexture를 직접 그려 이 값과 무관")]
+    public float captureRate = 10f;
     [Tooltip("수평 화각(FOV, 도). RPi Camera v2 기본 약 62°")]
     public float fov = 62f;
 
@@ -1170,7 +1170,7 @@ public class CameraSensor : MonoBehaviour
 
     void Update()
     {
-        // 캡처 주기 제한: 매 프레임 렌더링/ReadPixels는 무거우므로 captureRate(예: 30Hz)마다 1회만 실행
+        // 캡처 주기 제한: CPU 데이터 캡처(렌더링+ReadPixels)는 무거우므로 captureRate(기본 10Hz)마다 1회만 실행
         captureTimer += Time.deltaTime;
         if (captureTimer >= 1f / captureRate)
         {
@@ -1183,7 +1183,8 @@ public class CameraSensor : MonoBehaviour
     //   ① 카메라 렌더링 → ② 픽셀 읽기(ReadPixels) → ③ 원본 저장(colorBytes) → ④ Grayscale 전처리
     void CaptureFrame()
     {
-        // ① 카메라를 RenderTexture에 한 번 렌더링 (수동 렌더: 캡처 시점에만 수행)
+        // ① CPU 데이터용 캡처 직전에만 카메라를 RenderTexture에 렌더링 (수동 렌더)
+        //    (화면 표시는 이와 무관하게 rt를 직접 그리므로, 이 렌더는 데이터 캡처(10Hz) 때만 동작)
         cam.Render();
 
         // ② 렌더링 결과를 Texture2D로 읽어옴 ← 여기가 "영상 데이터 입력" 시점
@@ -1234,7 +1235,9 @@ public class CameraSensor : MonoBehaviour
 
         // RenderTexture는 픽셀 원점이 좌하단이라, GUI(좌상단 원점)에 그대로 그리면
         // 상/하가 뒤집힙니다. → rect 높이를 음수로 만들어 DrawTexture를 상하 반전시켜 보정합니다.
-        GUI.DrawTexture(new Rect(right, top + panelH, panelW, -panelH), capturedTexture);
+        // ★ RGB 패널은 CPU ReadPixels 없이 RenderTexture(rt)를 직접 그립니다.
+        //   (매 프레임 ReadPixels는 GPU 동기화 스털을 일으켜 에디터 전체가 멈출 수 있음)
+        GUI.DrawTexture(new Rect(right, top + panelH, panelW, -panelH), rt);
         GUI.Label(new Rect(right, top + panelH - 16, panelW, 16), "  [CameraSensor] RGB");
 
         if (showGrayscale)
@@ -1255,14 +1258,14 @@ public class CameraSensor : MonoBehaviour
 > ⚠️ **주의사항**
 > - **Main Camera는 그대로 둡니다.** 센서 카메라는 `targetTexture`가 지정되어 Game 뷰 화면에는 그려지지 않고 RenderTexture에만 그립니다. 주 화면은 기존 Main Camera가 담당합니다.
 > - **화면(패널)에 로봇 몸통(lds, 바퀴)이 보여도 정상입니다.** 실제 로봇 카메라도 자기 몸 일부가 보입니다. 그것을 제외하고 싶으면 `cam.cullingMask`에서 로봇 레이어를 빼면 되지만, 여기서는 학습 목적으로 그대로 둡니다.
-> - **성능**: 카메라 캡처는 GPU→CPU 픽셀 읽기(`ReadPixels`)라 GPU 렌더링 파이프라인을 잠시 멈추게(스털) 합니다. 위처럼 재사용 버퍼로 GC 부하를 없애도 여전히 느리면(`captureRate`=15~10, `width/height`=320x240)으로 낮춥니다.
+> - **성능**: RGB 표시는 `rt`를 직접 그리므로 CPU 트래픽이 없습니다. CPU 데이터 캡처(`ReadPixels`)는 기본 10Hz로 낮췄고, 여전히 스털/멈춤이 있으면 `captureRate=5`, `width/height=320x240`으로 더 낮춥니다.
 
 ### 7-4. 스크립트 연결 (장착)
 
 1. Hierarchy에서 **camera_link** 선택
 2. **Add Component > CameraSensor** 추가 → `[RequireComponent(typeof(Camera))]` 덕분에 Unity **Camera가 자동으로 함께 추가**됩니다.
 3. 값 확인 (기본값이 실제 하드웨어와 유사):
-   - **width** = 640 / **height** = 480 / **captureRate** = 30 / **fov** = 62
+   - **width** = 640 / **height** = 480 / **captureRate** = 10 (CPU 데이터 주기. 화면은 rt 직접 표시) / **fov** = 62
    - **showOnScreen** / **showGrayscale** = `true` 유지
 
 ### 7-5. Play 테스트 (영상 입력 확인)
@@ -1323,7 +1326,7 @@ MapDisplay (Quad + MapRenderer)     (맵)
 ✅ 맵: MapDisplay에 장애물이 검정 점, 빈 공간이 흰색(free)으로 표시 (RViz Map 규칙)
 ✅ 오도메트리: 위치/방향/속도가 이동에 따라 갱신
 ✅ IMU: 회전 시 각속도, 가감속 시 가속도 변화
-✅ 카메라: 전방 RGB/Grayscale 영상이 Game 뷰 패널로 실시간 출력 (640x480 @ 30fps)
+✅ 카메라: 전방 RGB/Grayscale 영상이 Game 뷰 패널로 실시간 출력 (640x480, CPU 캡처 기본 10Hz)
 ```
 
 ---
@@ -1376,7 +1379,7 @@ MapDisplay (Quad + MapRenderer)     (맵)
 | camera_link에 CameraSensor가 부착됐는지 | Add Component 확인 |
 | showOnScreen가 체크인지 | Inspector 확인 |
 | Main Camera 대신 센서 카메라로만 보고 있는지 | 센서 카메라는 targetTexture 전용이므로 Game 뷰 주 화면은 Main Camera 사용 |
-| 캡처/화면이 뚝뚝 끊기는지 (성능) | 7-3 코드처럼 `GetRawTextureData<byte>()` 복사(GC-free) 방식인지 확인 후, captureRate를 15~10으로, 해상도를 320x240으로 낮춤 |
+| 캡처/화면이 뚝뚝 끊기거나 에디터가 멈추는지 (성능) | RGB 패널은 `rt` 직접 표시인지 확인 후, CPU 캡처 `captureRate=5~10`, 해상도 320x240으로 낮춤 |
 | OnGUI 패널끼리 겹치는지 | 카메라 패널은 우상단, 맵 패널(4장)은 좌상단 아래라 기본적으로 겹치지 않음 |
 
 ---
