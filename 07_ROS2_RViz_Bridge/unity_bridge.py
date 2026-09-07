@@ -9,7 +9,7 @@ Unity(TurtleBot3 시뮬레이션) ↔ ROS2 Jazzy 브릿지 노드.
     Unity  (RosBridge.cs, TCP 서버)  0.0.0.0:8765  (Windows)
        ↑ TCP
     본 노드 (TCP 클라이언트)  host.docker.internal:8765  (Docker ros_jazzy1)
-       → ROS2 토픽 발행: /map, /scan, /odom, /tf, /tf_static
+       → ROS2 토픽 발행: /map, /scan, /odom, /image_raw, /tf, /tf_static
        → RViz2에서 표시
 
 실행 방법 (Docker 컨테이너 ros_jazzy1 안에서):
@@ -23,12 +23,14 @@ Unity(TurtleBot3 시뮬레이션) ↔ ROS2 Jazzy 브릿지 노드.
     [scan =2] float32 angle_min, angle_max, angle_increment,
               float32 range_min, range_max, uint32 rayCount, float32[rayCount]
     [odom =3] float64 x, float64 z, float64 yaw_deg(Unity), float64 linear_x, float64 angular_z
+    [image=4] int32 width, int32 height, int32 encoding(0=mono8/1=rgba8),
+              uint32 dataLen, int8[dataLen]
 
 좌표 변환 (Unity ↔ ROS):
     Unity(x 오른쪽, z 북쪽, y 위) → ROS(x 동쪽, y 북쪽, z 위)
       - ROS 위치 = (Unity x, Unity z, 0)
       - ROS 요각 = π/2 - yaw_deg(Unity)  (REP-103 기준 프레임 정합)
-    TF 트리: map(=odom) → base_footprint → base_scan(lidar)
+    TF 트리: map(=odom) → base_footprint → base_scan(lidar), camera_link(camera)
 """
 import math
 import socket
@@ -42,7 +44,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import Image, LaserScan
 from std_msgs.msg import Header
 from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
 
@@ -51,6 +53,7 @@ FRAME_MAP = "map"
 FRAME_ODOM = "odom"
 FRAME_BASE = "base_footprint"
 FRAME_LIDAR = "base_scan"
+FRAME_CAMERA = "camera_link"   # 카메라 프레임 (7장 camera_link, /image_raw용)
 
 # TCP 접속 설정 (Unity RosBridge.cs와 일치)
 TCP_HOST = "host.docker.internal"
@@ -77,6 +80,7 @@ class UnityBridge(Node):
         self.map_pub = self.create_publisher(OccupancyGrid, "/map", qos_map)
         self.scan_pub = self.create_publisher(LaserScan, "/scan", 10)
         self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
+        self.image_pub = self.create_publisher(Image, "/image_raw", 10)
 
         # TF 브로드캐스터
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -117,13 +121,25 @@ class UnityBridge(Node):
         t_bs.transform.rotation.z, t_bs.transform.rotation.w = q[2], q[3]
         tfs.append(t_bs)
 
+        # base_footprint → camera_link : 카메라 위치(0, 0.03, 0.055)
+        t_cam = TransformStamped()
+        t_cam.header.frame_id = FRAME_BASE
+        t_cam.child_frame_id = FRAME_CAMERA
+        t_cam.transform.translation.x = 0.0
+        t_cam.transform.translation.y = 0.03
+        t_cam.transform.translation.z = 0.055
+        q = quat_from_yaw(0.0)
+        t_cam.transform.rotation.x, t_cam.transform.rotation.y = q[0], q[1]
+        t_cam.transform.rotation.z, t_cam.transform.rotation.w = q[2], q[3]
+        tfs.append(t_cam)
+
         # stamp 오래된 시간이면 안 되므로 현재 시간 사용
         now = self.get_clock().now().to_msg()
         for t in tfs:
             t.header.stamp = now
 
         self.tf_static_broadcaster.sendTransform(tfs)
-        self.get_logger().info(f"[유니티 브릿지] 정적 TF 발행: map→odom, {FRAME_BASE}→{FRAME_LIDAR}")
+        self.get_logger().info(f"[유니티 브릿지] 정적 TF 발행: map→odom, {FRAME_BASE}→{FRAME_LIDAR}, {FRAME_BASE}→{FRAME_CAMERA}")
 
     # ------------------------------------------------------------------
     def recv_exact(self, conn, n):
@@ -145,6 +161,8 @@ class UnityBridge(Node):
             self.handle_scan(payload)
         elif msg_type == 3:
             self.handle_odom(payload)
+        elif msg_type == 4:
+            self.handle_image(payload)
         else:
             self.get_logger().warn(f"[브릿지] 알 수 없는 msgType: {msg_type}")
 
@@ -241,6 +259,30 @@ class UnityBridge(Node):
         tf.transform.rotation.w = qw
 
         self.tf_broadcaster.sendTransform(tf)
+
+    # ------------------- /image_raw -------------------
+    def handle_image(self, payload: bytes):
+        # int32×3(12) + uint32(4) = 16, 이후 픽셀 dataLen바이트
+        w, h, enc = struct.unpack_from("<iii", payload, 0)
+        data_len = struct.unpack_from("<I", payload, 12)[0]
+        raw = payload[16:16 + data_len]
+
+        msg = Image()
+        msg.header = Header()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = FRAME_CAMERA
+        msg.height = int(h)
+        msg.width = int(w)
+        if enc == 0:
+            msg.encoding = "mono8"        # 흑백 (픽셀당 1바이트)
+            msg.step = int(w)
+        else:
+            msg.encoding = "rgba8"        # 원본 컬러 (픽셀당 4바이트 R,G,B,A)
+            msg.step = int(w) * 4
+        # bytes는 uint8 배열로 바로 직렬화되므로 30만개 리스트 생성 오버헤드를 피할 수 있습니다.
+        msg.data = raw
+
+        self.image_pub.publish(msg)
 
     # ------------------------------------------------------------------
     def run(self):
