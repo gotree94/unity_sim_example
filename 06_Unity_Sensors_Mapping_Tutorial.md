@@ -1277,7 +1277,7 @@ public class CameraSensor : MonoBehaviour
 5. A/D로 제자리 회전 → 장애물이 화면 좌우로 지나가는지 확인 (카메라가 로봇과 함께 회전)
 6. Scene 뷰에서 `camera_link`를 선택하면 카메라 프러스텀(렌즈 모양)이 전방(+Z)을 향하는지 점검
 
-> **ROS 대응**: 이 바이트 배열이 실제 로봇에서는 `sensor_msgs/Image` `/image_raw` 토픽으로 발행됩니다 (frame_id = `camera`).
+> **ROS 대응**: 이 바이트 배열이 실제 로봇에서는 `sensor_msgs/Image` `/image_raw` 토픽으로 발행됩니다 (frame_id = `camera_link`).
 > `CameraSensor`의 `colorBytes`(RGBA32) 또는 `grayBytes`은 그대로 한 프레임 영상 payload입니다.
 > 나중에 **10장의 RosBridge 확장**(예: msgType=4, PNG 압축 또는 원시 바이트)으로 보내면 RViz2의 **Image Panel**에서 동일 영상을 확인할 수 있습니다.
 
@@ -1435,25 +1435,27 @@ Unity (RosBridge.cs, TCP 서버 0.0.0.0:8765)
    │  이진 프레임 ("TBR1" + msgType + payloadLen)
    ▼
 UnityBridge (unity_bridge.py, TCP 클라이언트 → host.docker.internal:8765)
-   └─ 발행: /map(OccupancyGrid)  /scan(LaserScan)  /odom(Odometry)  /tf, /tf_static
-      → RViz2 표시
+   └─ 발행: /map(OccupancyGrid)  /scan(LaserScan)  /odom(Odometry)
+      /image_raw(Image, 카메라)  /tf, /tf_static
+   → RViz2 표시
 ```
 
 - Unity 좌표계(x=오른쪽, z=북쪽, y=위)를 ROS REP-103 규칙(x=동쪽, y=북쪽, z=위)으로 변환합니다.
   - **ROS 위치 = (Unity x, Unity z, 0)**
   - **ROS 요각 = π/2 − Unity yaw**  (`unity_bridge.py`의 `quat_from_yaw`에 반영)
   - **스캔 각도 반전**: Unity는 각도를 정면(+Z)·동쪽 방향(시계방향)으로 증가시키지만, ROS LaserScan은 +X(전방)에서 반시계방향으로 증가하므로 `ranges[]`를 역순으로 전송합니다 (`RosBridge.SerializeScan`).
-- TF 트리: `map ←(static)→ odom ←(동적)→ base_footprint ←(static, 0.055m)→ base_scan`
+- **영상**: `CameraSensor.colorBytes`(RGBA) 또는 `grayBytes`(흑백)를 `sensor_msgs/Image` `/image_raw`로 전송합니다 (frame_id = `camera_link`). 흑백(mono8)은 픽셀당 1바이트라 가벼우며, 컬러(rgba8)는 4배 용량이라 320x240 이하 해상도를 권장합니다.
+- TF 트리: `map ←(static)→ odom ←(동적)→ base_footprint ←(static, 0.055m)→ base_scan`, `base_footprint ←(static, 0.03·0.055m)→ camera_link`
 
 > **왜 요각 변환이 필요한가?** Unity는 +Z가 "정면"이고 +X가 "오른쪽"이지만, ROS(REP-103)는 +X가 정면입니다. 따라서 Unity 0°(정북·+Z)를 ROS에서는 90°(동쪽)로 보정해야 로봇/스캔이 맵 위에 정확히 정렬됩니다.
 
 ### 10-2. 파일 배치와 실행 절차
 
-새 파일 3개 (기존 `MapRenderer.cs`, `LidarSensor.cs`는 4장에서 만든 버전 그대로 사용):
+새 파일 3개 (기존 `MapRenderer.cs`, `LidarSensor.cs`, `CameraSensor.cs`는 4장·7장에서 만든 버전 그대로 사용). `CameraSensor.cs`가 없어도 맵/스캔/오도메트리는 정상 동작하고, 카메라 영상(`/image_raw`)만 전송되지 않습니다:
 
 | # | 파일 | 위치 | 역할 |
 |---|------|------|------|
-| 1 | `RosBridge.cs` | Unity `Assets/` | TCP 서버(8765). 맵/스캔/오도메트리를 이진 프레임으로 직렬화해 전송 |
+| 1 | `RosBridge.cs` | Unity `Assets/` | TCP 서버(8765). 맵/스캔/오도메트리 + 카메라 영상을 이진 프레임으로 직렬화해 전송 |
 | 2 | `unity_bridge.py` | `D:\github\unity_sim_example\07_ROS2_RViz_Bridge\` | TCP 클라이언트 → ROS2 토픽 발행 |
 | 3 | `rviz_map_view.rviz` | 같은 폴더 | RViz2 표시 설정 (Fixed Frame = `map`) |
 
@@ -1480,13 +1482,13 @@ using System.Threading;
 // #       ↑ TCP
 // #    Docker 컨테이너(ros_jazzy1) unity_bridge.py (클라이언트)
 // #       → host.docker.internal:8765 로 접속 (Docker -p 8765:8765)
-// #       → /map /scan /odom /tf 를 ROS2 토픽으로 발행
+// #       → /map /scan /odom /image_raw /tf 를 ROS2 토픽으로 발행
 // #       → RViz2에서 표시
 // #
 // # 프로토콜 (이진 프레임, little-endian, C#/Python 양쪽 동일):
 // #   [헤더 11바이트]
 // #     uint32 magic     = 0x31524254 ("TBR1")
-// #     uint8  msgType   = 1:map / 2:scan / 3:odom
+// #     uint8  msgType   = 1:map / 2:scan / 3:odom / 4:image
 // #     uint32 payloadLen
 // #   [map payload]
 // #     float32 resolution, int32 width, int32 height
@@ -1500,6 +1502,10 @@ using System.Threading;
 // #     float64 x, float64 z (Unity 위치, Python에서 z→ROS y 변환)
 // #     float64 yaw_deg (Unity 요각, Python에서 ROS yaw로 변환)
 // #     float64 linear_x (전진속도), float64 angular_z (각속도)
+// #   [image payload]
+// #     int32 width, int32 height
+// #     int32 encoding (0=mono8 흑백 grayBytes / 1=rgba8 컬러 colorBytes)
+// #     uint32 dataLen, int8[dataLen]
 // ############################################################
 public class RosBridge : MonoBehaviour
 {
@@ -1516,6 +1522,14 @@ public class RosBridge : MonoBehaviour
     public MapRenderer mapRenderer;
     [Tooltip("로봇 루트 Transform (turtlebot3_burger) — /odom 위치/회전 기준")]
     public Transform robotTransform;
+
+    [Header("카메라 이미지 전송 (7장의 CameraSensor 필요)")]
+    [Tooltip("true면 카메라 영상을 /image_raw(sensor_msgs/Image)로도 전송")]
+    public bool sendImage = true;
+    [Tooltip("0=흑백 mono8(픽셀당 1바이트, 가벼움) / 1=원본 컬러 rgba8(4배 용량)")]
+    public int imageMode = 0;
+    [Tooltip("CameraSensor (camera_link) — /image_raw 전송용 (Inspector 연결 or 자동 탐색)")]
+    public CameraSensor cameraSensor;
 
     // ----- 연결 상태 (Inspector에서 확인용) -----
     [Header("상태")]
@@ -1543,6 +1557,8 @@ public class RosBridge : MonoBehaviour
             mapRenderer = FindFirstObjectByType<MapRenderer>();
         if (robotTransform == null && lidar != null && lidar.transform.parent != null)
             robotTransform = lidar.transform.root;
+        if (cameraSensor == null)
+            cameraSensor = FindFirstObjectByType<CameraSensor>();
 
         if (lidar == null || mapRenderer == null)
         {
@@ -1550,10 +1566,13 @@ public class RosBridge : MonoBehaviour
             return;
         }
 
+        if (sendImage && cameraSensor == null)
+            Debug.LogWarning("[RosBridge] CameraSensor를 찾지 못해 /image_raw를 전송하지 않습니다. 7장 카메라를 추가하거나 Inspector에서 연결하세요.");
+
         StartServer();
 
         // 초기화 확인용 로그
-        Debug.Log($"[RosBridge] 시작됨. 포트={port}, lidar={lidar.gameObject.name}, mapRenderer={mapRenderer.gameObject.name}, robot={robotTransform?.name}");
+        Debug.Log($"[RosBridge] 시작됨. 포트={port}, lidar={lidar.gameObject.name}, mapRenderer={mapRenderer.gameObject.name}, robot={robotTransform?.name}, camera={(cameraSensor != null ? cameraSensor.gameObject.name : "없음")}");
     }
 
     void OnDestroy()
@@ -1651,7 +1670,7 @@ public class RosBridge : MonoBehaviour
         }
     }
 
-    // 모든 클라이언트에게 map/scan/odom 프레임을 전송
+    // 모든 클라이언트에게 map/scan/odom/이미지 프레임을 전송
     void BroadcastFrames()
     {
         lock (clientLock)
@@ -1675,6 +1694,11 @@ public class RosBridge : MonoBehaviour
                     stream.Write(mapData, 0, mapData.Length);
                     stream.Write(scanData, 0, scanData.Length);
                     stream.Write(odomData, 0, odomData.Length);
+                    if (sendImage && cameraSensor != null)
+                    {
+                        byte[] imageData = SerializeImage();
+                        stream.Write(imageData, 0, imageData.Length);
+                    }
                     stream.Flush();
                 }
                 catch
@@ -1812,6 +1836,38 @@ public class RosBridge : MonoBehaviour
         }
     }
 
+    // /image_raw 프레임 만들기 (sensor_msgs/Image 데이터)
+    // cameraSensor는 captureRate(기본 10Hz)마다 최신 프레임을 갱신하므로,
+    // 매 발행 주기 가장 최근 영상을 그대로 직렬화해 보냅니다.
+    byte[] SerializeImage()
+    {
+        using (MemoryStream ms = new MemoryStream())
+        using (BinaryWriter bw = new BinaryWriter(ms))
+        {
+            bw.Write(0x31524254u);
+            bw.Write((byte)4);              // 4 = image
+            long lenPos = ms.Position;
+            bw.Write(0u);
+
+            // imageMode: 0=흑백 mono8(grayBytes) / 1=컬러 rgba8(colorBytes, 4배 용량)
+            bool color = imageMode == 1 && cameraSensor.colorBytes != null;
+            byte[] pixels = color ? cameraSensor.colorBytes : cameraSensor.grayBytes;
+
+            bw.Write(cameraSensor.width);
+            bw.Write(cameraSensor.height);
+            bw.Write(color ? 1 : 0);        // encoding: 0=mono8 / 1=rgba8
+            bw.Write((uint)pixels.Length);
+            bw.Write(pixels);               // 픽셀 원시 바이트
+
+            long endPos = ms.Position;
+            ms.Position = lenPos;
+            bw.Write((uint)(endPos - lenPos - 4));
+            ms.Position = endPos;
+
+            return ms.ToArray();
+        }
+    }
+
     // ---------- 유틸 ----------
 
     // Unity 버전별 호환 검색: 2023+는 FindFirstObjectByType, 이전 버전은 FindObjectOfType 사용
@@ -1843,8 +1899,9 @@ Panels:
         Name: Orbit View
 Visibility:
   Grid: true
-  Map: true
+  Image: true
   LaserScan: true
+  Map: true
   TF: true
 Visualization Manager:
   Class: ""
@@ -1887,6 +1944,17 @@ Visualization Manager:
       Size (Pixels): 3
       Color: 255; 0; 0
       Color Style: Flat Color
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: Image
+      Image Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /image_raw
+      Transport Hint: raw
+      Value: true
     - Class: rviz_default_plugins/TF
       Enabled: true
       Name: TF
@@ -1924,7 +1992,7 @@ Unity(TurtleBot3 시뮬레이션) ↔ ROS2 Jazzy 브릿지 노드.
     Unity  (RosBridge.cs, TCP 서버)  0.0.0.0:8765  (Windows)
        ↑ TCP
     본 노드 (TCP 클라이언트)  host.docker.internal:8765  (Docker ros_jazzy1)
-       → ROS2 토픽 발행: /map, /scan, /odom, /tf, /tf_static
+       → ROS2 토픽 발행: /map, /scan, /odom, /image_raw, /tf, /tf_static
        → RViz2에서 표시
 
 실행 방법 (Docker 컨테이너 ros_jazzy1 안에서):
@@ -1938,12 +2006,14 @@ Unity(TurtleBot3 시뮬레이션) ↔ ROS2 Jazzy 브릿지 노드.
     [scan =2] float32 angle_min, angle_max, angle_increment,
               float32 range_min, range_max, uint32 rayCount, float32[rayCount]
     [odom =3] float64 x, float64 z, float64 yaw_deg(Unity), float64 linear_x, float64 angular_z
+    [image=4] int32 width, int32 height, int32 encoding(0=mono8/1=rgba8),
+              uint32 dataLen, int8[dataLen]
 
 좌표 변환 (Unity ↔ ROS):
     Unity(x 오른쪽, z 북쪽, y 위) → ROS(x 동쪽, y 북쪽, z 위)
       - ROS 위치 = (Unity x, Unity z, 0)
       - ROS 요각 = π/2 - yaw_deg(Unity)  (REP-103 기준 프레임 정합)
-    TF 트리: map(=odom) → base_footprint → base_scan(lidar)
+    TF 트리: map(=odom) → base_footprint → base_scan(lidar), camera_link(camera)
 """
 import math
 import socket
@@ -1957,7 +2027,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import Image, LaserScan
 from std_msgs.msg import Header
 from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
 
@@ -1966,6 +2036,7 @@ FRAME_MAP = "map"
 FRAME_ODOM = "odom"
 FRAME_BASE = "base_footprint"
 FRAME_LIDAR = "base_scan"
+FRAME_CAMERA = "camera_link"   # 카메라 프레임 (7장 camera_link, /image_raw용)
 
 # TCP 접속 설정 (Unity RosBridge.cs와 일치)
 TCP_HOST = "host.docker.internal"
@@ -1992,6 +2063,7 @@ class UnityBridge(Node):
         self.map_pub = self.create_publisher(OccupancyGrid, "/map", qos_map)
         self.scan_pub = self.create_publisher(LaserScan, "/scan", 10)
         self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
+        self.image_pub = self.create_publisher(Image, "/image_raw", 10)
 
         # TF 브로드캐스터
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -2032,13 +2104,25 @@ class UnityBridge(Node):
         t_bs.transform.rotation.z, t_bs.transform.rotation.w = q[2], q[3]
         tfs.append(t_bs)
 
+        # base_footprint → camera_link : 카메라 위치(0, 0.03, 0.055)
+        t_cam = TransformStamped()
+        t_cam.header.frame_id = FRAME_BASE
+        t_cam.child_frame_id = FRAME_CAMERA
+        t_cam.transform.translation.x = 0.0
+        t_cam.transform.translation.y = 0.03
+        t_cam.transform.translation.z = 0.055
+        q = quat_from_yaw(0.0)
+        t_cam.transform.rotation.x, t_cam.transform.rotation.y = q[0], q[1]
+        t_cam.transform.rotation.z, t_cam.transform.rotation.w = q[2], q[3]
+        tfs.append(t_cam)
+
         # stamp 오래된 시간이면 안 되므로 현재 시간 사용
         now = self.get_clock().now().to_msg()
         for t in tfs:
             t.header.stamp = now
 
         self.tf_static_broadcaster.sendTransform(tfs)
-        self.get_logger().info(f"[유니티 브릿지] 정적 TF 발행: map→odom, {FRAME_BASE}→{FRAME_LIDAR}")
+        self.get_logger().info(f"[유니티 브릿지] 정적 TF 발행: map→odom, {FRAME_BASE}→{FRAME_LIDAR}, {FRAME_BASE}→{FRAME_CAMERA}")
 
     # ------------------------------------------------------------------
     def recv_exact(self, conn, n):
@@ -2060,6 +2144,8 @@ class UnityBridge(Node):
             self.handle_scan(payload)
         elif msg_type == 3:
             self.handle_odom(payload)
+        elif msg_type == 4:
+            self.handle_image(payload)
         else:
             self.get_logger().warn(f"[브릿지] 알 수 없는 msgType: {msg_type}")
 
@@ -2157,6 +2243,30 @@ class UnityBridge(Node):
 
         self.tf_broadcaster.sendTransform(tf)
 
+    # ------------------- /image_raw -------------------
+    def handle_image(self, payload: bytes):
+        # int32×3(12) + uint32(4) = 16, 이후 픽셀 dataLen바이트
+        w, h, enc = struct.unpack_from("<iii", payload, 0)
+        data_len = struct.unpack_from("<I", payload, 12)[0]
+        raw = payload[16:16 + data_len]
+
+        msg = Image()
+        msg.header = Header()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = FRAME_CAMERA
+        msg.height = int(h)
+        msg.width = int(w)
+        if enc == 0:
+            msg.encoding = "mono8"        # 흑백 (픽셀당 1바이트)
+            msg.step = int(w)
+        else:
+            msg.encoding = "rgba8"        # 원본 컬러 (픽셀당 4바이트 R,G,B,A)
+            msg.step = int(w) * 4
+        # bytes는 uint8 배열로 바로 직렬화되므로 30만개 리스트 생성 오버헤드를 피할 수 있습니다.
+        msg.data = raw
+
+        self.image_pub.publish(msg)
+
     # ------------------------------------------------------------------
     def run(self):
         """Unity(TCP 서버)에 접속하여 프레임을 읽고 발행하는 메인 루프."""
@@ -2234,6 +2344,8 @@ if __name__ == "__main__":
 
 > **Tip**: Unity Play와 브릿지 실행 순서는 무관합니다. `unity_bridge.py`는 2초 간격으로 Unity 서버에 재접속을 시도합니다.
 >
+> **카메라 영상**: `rviz_map_view.rviz`에는 `/image_raw`를 보는 **Image 패널이 기본 포함**되어 있습니다. Unity 씬의 `camera_link`에 `CameraSensor`(7장)를 추가해 두면 RViz2에서 흑백(mono8) 카메라 화면이 함께 표시됩니다. 영상이 보이지 않으면 Displays > Image > Image Topic에서 `/image_raw` 확인하고, Unity 로그 시작 메시지에 `camera=...`가 포함되어 있는지 확인하세요.
+>
 > **주의**: Windows 방화벽이 8765 포트 인바운드를 막으면 컨테이너가 접속하지 못하므로, 01단계에서 했던 것처럼 해당 포트를 허용해야 합니다.
 
 ### 10-3. 오류 확인 요령
@@ -2243,6 +2355,7 @@ if __name__ == "__main__":
 | Unity 로그 "서버 시작 실패" | `netstat -ano \| findstr 8765` 로 포트 점유 확인 |
 | 브릿지가 반복 "연결 끊김" | Windows 방화벽 인바운드 8765 허용 여부, Unity Play 상태 |
 | RViz2에 맵이 안 뜸 | RViz2 하단 토픽 목록에 `/map`이 나타나는지, Fixed Frame = `map` |
+| RViz2에 영상(Image)이 안 뜸 | Unity 씬에 `CameraSensor`(camera_link) 추가 여부, Displays > Image > Image Topic = `/image_raw`, frame_id = `camera_link` |
 | 센서/맵이 어긋남 | TF 패널에서 `map → odom → base_footprint → base_scan` 연결 확인 |
 
 ---
