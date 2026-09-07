@@ -1,6 +1,6 @@
 # 6단계: Unity 센서 시뮬레이션 - LiDAR, 맵핑, 오도메트리, IMU
 
-> **목적**: TurtleBot3 Burger에 LiDAR / 오도메트리 / IMU 센서를 구현하고 장애물 환경에서 거리 기반 맵을 그린다  
+> **목적**: TurtleBot3 Burger에 LiDAR / 오도메트리 / IMU / 카메라 센서를 구현하고 장애물 환경에서 거리 기반 맵과 전방 영상을 생성한다  
 > **소요 시간**: 약 180 ~ 240분  
 > **전제 조건**: 05단계 완료 (TurtleBot3 URDF 임포트 + Rigidbody 구동)
 
@@ -16,6 +16,7 @@
 | 2 | **맵핑** | 장애물을 추가하고 LiDAR 거리 데이터로 2D 점유격자 맵 그리기 |
 | 3 | **오도메트리** | 바퀴 회전을 적분하여 로봇 위치/방향 계산 |
 | 4 | **IMU** | 로봇의 각속도와 선형 가속도 측정 |
+| 5 | **카메라** | 전방 영상을 캡처해 화면/외부에서 볼 수 있는 영상 데이터로 출력 |
 
 > **Isaac Sim 대응**: Isaac Sim에서는 OmniGraph의 `Isaac Compute Odometry`, `RTX Lidar`, ROS2 IMU 브릿지로 동일 기능을 구현합니다. 여기서는 Unity C# 스크립트로 동일한 센서 데이터 개념을 직접 구현합니다.
 
@@ -29,9 +30,11 @@
 4. [맵 그리기 (2D 점유격자)](#4-맵-그리기-2d-점유격자)
 5. [오도메트리 구현](#5-오도메트리-구현)
 6. [IMU 센서 구현](#6-imu-센서-구현)
-7. [전체 테스트](#7-전체-테스트)
-8. [문제 해결 체크리스트](#8-문제-해결-체크리스트)
-9. [ROS2 RViz2로 맵/센서 전송 (브릿지 연동)](#9-ros2-rviz2로-맵센서-전송-브릿지-연동)
+7. [카메라 장착과 영상 입력](#7-카메라-장착과-영상-입력)
+8. [전체 테스트](#8-전체-테스트)
+9. [문제 해결 체크리스트](#9-문제-해결-체크리스트)
+10. [ROS2 RViz2로 맵/센서 전송 (브릿지 연동)](#10-ros2-rviz2로-맵센서-전송-브릿지-연동)
+11. [부록: LiDAR 형상 변경 (LDS-02 / LDS-03 메시 스위쳐)](#11-부록-lidar-형상-변경-lds-02--lds-03-메시-스위쳐)
 
 ---
 
@@ -305,6 +308,17 @@ public class LidarSensor : MonoBehaviour
 3. 로봇 주변에 가까운 물체(손, 벽) 대면 라인이 그 지점에서 줄어드는지 확인
 
 > 💡 **팁**: 레이저 준비물 5Hz가 아닌 매 프레임 갱신되므로 Scene 뷰에서 실시간으로 장애물 반사를 확인할 수 있습니다.
+
+### 2-5. LiDAR 형상 변경 (LDS-02 / LDS-03) — 개요
+
+05단계에서 URDF로 임포트된 `lds`(base_scan의 자식)는 **기본적으로 LDS-01 클래식 원통형**(`lds.stl`)입니다.
+실제 하드웨어 버전은 **LDS-02(LD08, 원반형)** 또는 **LDS-03(COIN-D4, 각형)** 이므로,
+실제 메시 파일로 형상을 교체/복원하는 **에디터 도구**를 제공합니다.
+
+> 📌 **상세 절차는 파일 맨 아래 [11. 부록: LiDAR 형상 변경 (LDS-02 / LDS-03 메시 스위쳐)]에서 정리했습니다.**
+> 간단히 요약하면 — `Assets\URDF\meshes\sensors\`에 `LDS-02.stl` / `LDS-03.stl`을 넣고
+> 에디터 메뉴 **Tools > TurtleBot3 > LDS Sensor Switcher**에서 **이 모델로 적용**을 누르면 됩니다.
+> 되돌리려면 **URDF 기본(LDS-01)으로 복원**을 누릅니다.
 
 ---
 
@@ -645,170 +659,6 @@ public class MapRenderer : MonoBehaviour
                                                 | GetMapOrigin()                  |
                                                 |  - 좌하단 Origin 좌표 반환      |
                                                 +---------------------------------+
-```
-
-```
-using UnityEngine;
-
-// ############################################################
-// # LidarSensor
-// # 역할: TurtleBot3의 2D LiDAR(LDS-02/LDS-03)를 시뮬레이션합니다.
-// #       - 회전 로테이터를 만들어 시각적으로 레이저를 회전시킵니다.
-// #       - 매 프레임 360° Raycast로 각도별 거리값(ranges[])을 측정합니다.
-// #       - LineRenderer로 녹색 레이저 링을 Scene/Game 뷰에 그립니다.
-// # 부착 위치: base_scan (LiDAR 링크)에 부착해야 정확한 원점에서 측정됩니다.
-// ############################################################
-public class LidarSensor : MonoBehaviour
-{
-    // ---------- [LDS-02 사양 (기본) / LDS-03 사양으로 조정 가능] ----------
-    // 각도별 분해능 개수. LDS-02는 1° → 360개, LDS-03은 0.9° → 약 400개.
-    public int rayCount = 360;
-    // 최소 측정 거리(m). 이보다 가까운 물체는 무시. (LDS-02: 0.16, LDS-03: 0.05)
-    public float rangeMin = 0.12f;
-    // 최대 측정 거리(m). 이보다 먼 곳은 감지 안 됨. (LDS-02: 8.0, LDS-03: 12.0)
-    public float rangeMax = 3.5f;
-    // 스캔 주기(Hz). LDS-02는 5Hz, LDS-03은 10Hz.
-    public float scanRate = 5f;
-    // 시각적 회전 속도(RPM 개념, deg/s로 환산). 실제 센서 모터 회전 표현용.
-    public float rotationSpeed = 1800f;
-
-    // ---------- [시각화] ----------
-    public bool drawRays = true;
-    public Color rayColor = Color.green;
-    // 레이저 발사 높이(m). base_scan 위쪽으로 올려 로봇 몸체와 겹치지 않게 함.
-    public float rayHeight = 0.15f;
-
-    // 각도별 거리값 배열 (ROS LaserScan.range 구조와 동일). 외부(맵핑)에서 읽습니다.
-    public float[] ranges;
-
-    private Transform rotator;
-    private LineRenderer[] lines;      // 레이저 링을 그리는 라인렌더러
-    private int lastPointIndex = -1;
-
-    void Awake()
-    {
-        CreateRotator();   // 회전용 자식 오브젝트 생성
-        CreateRayLines();  // LineRenderer 생성 (녹색 링)
-        // ranges 배열 초기화: 기본값을 최대 측정 거리로 채움 (아무것도 없으면 최대값)
-        ranges = new float[rayCount];
-        for (int i = 0; i < rayCount; i++)
-            ranges[i] = rangeMax;
-    }
-
-    void Start()
-    {
-        // 초기화 확인용 로그: 이 로그가 보이면 스크립트가 정상 실행 중이라는 뜻.
-        bool shaderOk = lines != null && lines.Length > 0 && lines[0] != null
-                        && lines[0].material != null && lines[0].material.shader != null;
-        // base_scan의 실제 월드 위치를 출력해 레이저 원점(origin)이 맞는지 확인한다.
-        Vector3 origin = transform.position + Vector3.up * rayHeight;
-        Debug.Log($"[LidarSensor] 초기화됨. base_scan={gameObject.name}, LineRenderer={shaderOk}, rayCount={rayCount}, 월드위치={transform.position}, 레이저원점={origin}");
-    }
-
-    // 회전용 빈 오브젝트("LidarRotator")를 base_scan 아래 자식으로 생성.
-    // 라인 자체는 고정하고 로테이터만 회전시켜 레이저가 돌며 훑는 듯한 시각 효과를 줍니다.
-    void CreateRotator()
-    {
-        GameObject rotGO = new GameObject("LidarRotator");
-        rotGO.transform.SetParent(transform, false);
-        rotator = rotGO.transform;
-    }
-
-    // 360개 거리 점을 잇는 LineRenderer 1개를 base_scan에 추가하여 링 모양을 그림.
-    void CreateRayLines()
-    {
-        lines = new LineRenderer[1];
-        LineRenderer lr = gameObject.AddComponent<LineRenderer>();
-
-        // 렌더러 기본 설정을 명시적으로 지정 (셰이더/월드좌표/길이 보정)
-        lr.useWorldSpace = true;              // 월드 좌표로 점 배치 (로봇 이동에도 따라감)
-        lr.widthMultiplier = 1f;
-        lr.loop = false;                      // 닫는 점은 수동으로 추가
-        lr.receiveShadows = false;
-        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-
-        lr.positionCount = rayCount + 1;      // 360점 + 닫는 점 1개
-        lr.startWidth = 0.005f;               // 선 두께
-        lr.endWidth = 0.005f;
-        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        lr.receiveShadows = false;
-
-        // 셰이더를 여러 후보에서 차례로 시도해 안전하게 생성 (null이면 예외 방지)
-        Shader sh = Shader.Find("Sprites/Default");
-        if (sh == null) sh = Shader.Find("Legacy Shaders/Diffuse");
-        if (sh == null) sh = Shader.Find("Unlit/Color");
-        if (sh == null) sh = Shader.Find("Hidden/Internal-Colored");
-        lr.material = new Material(sh);
-        lr.material.color = Color.white;      // 타일 컬러는 흰색 → startColor가 그대로 보임
-        lr.startColor = rayColor;
-        lr.endColor = rayColor;
-        lines[0] = lr;
-    }
-
-    void Update()
-    {
-        // 시각화: 회전 오브젝트를 매 프레임 회전시켜 돌아가는 레이저 표현
-        rotator.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
-
-        // 데이터/실제 선: drawRays가 켜져 있으면 매 프레임 360° 전체를 측정해 라인 갱신
-        // (실제 센서는 회전 주기로 누적 출력하지만, 학습 목적으로 매 프레임 측정해도 무방)
-        if (drawRays)
-            UpdateScan();
-    }
-
-    // 매 프레임 360°를 Raycast로 측정하고 ranges[]와 레이저 링을 갱신
-    void UpdateScan()
-    {
-        // 발사 시작점: base_scan 월드위치에서 위로 rayHeight만큼 (장애물/라인 높이)
-        Vector3 origin = transform.position + Vector3.up * rayHeight;
-
-        for (int i = 0; i < rayCount; i++)
-        {
-            float angleRad = i * Mathf.Deg2Rad; // 0 ~ 359°
-            // 로봇의 forward(전방)가 로컬 Z축이라는 점에 주의.
-            // X = sin(각도), Z = cos(각도) 로 Y축 회전한 방향 벡터를 만듦.
-            // ★ 중요: Physics.Raycast는 월드 좌표로 방향을 받으므로,
-            //   TransformDirection으로 로봇(base_scan)의 회전을 반드시 반영해야 합니다.
-            //   이 변환이 없으면 ranges[i]가 월드 고정 각도로 측정되어,
-            //   맵핑에서 로봇 회전 보정과 어긋나 맵이 로봇과 함께 돌아가는 버그가 생깁니다.
-            Vector3 localDir = new Vector3(Mathf.Sin(angleRad), 0, Mathf.Cos(angleRad));
-            Vector3 direction = transform.TransformDirection(localDir);
-
-            if (Physics.Raycast(origin, direction, out RaycastHit hit, rangeMax))
-            {
-                float dist = hit.distance;
-                if (dist < rangeMin)
-                    ranges[i] = float.PositiveInfinity; // 최소거리 미만은 "감지 안 됨" 처리
-                else
-                    ranges[i] = dist;                   // 실제 반사 거리 저장
-            }
-            else
-            {
-                ranges[i] = rangeMax; // 화면(맵) 바깥은 최대값 = 감지 안 됨
-            }
-
-            float validDist = (float.IsInfinity(ranges[i])) ? rangeMax : ranges[i];
-
-            // 라인렌더러: i번째 링 점 = 원점 + 방향 × 거리 (링을 이루는 점)
-            // (주의: SetPosition(i, origin)처럼 원점을 찍으면 링이 점 하나로 뭉개짐)
-            lines[0].SetPosition(i, origin + direction * validDist);
-
-            // 보조 시각화: Scene 뷰(Gizmos ON)에 무조건 보이는 레이저 선.
-            // LineRenderer와 무관하게 동작하므로, 렌더링 원인을 분리 확인하는 용도.
-            if (i % 6 == 0)
-                Debug.DrawRay(origin, direction * validDist, rayColor);
-        }
-
-        // 링을 닫기 위해 마지막 점(rayCount)을 첫 점과 이어줌.
-        // (0.001m 위로 살짝 올려 점이 겹쳐 깜빡이는 걸 방지)
-        lines[0].SetPosition(rayCount, lines[0].GetPosition(0) + Vector3.up * 0.001f);
-    }
-
-    // 외부(맵핑/ROS)에서 각도별 거리를 얻는 API
-    public float GetRange(int index) => ranges[index];
-    public float GetRangeAtAngle(float angleDeg) => ranges[((int)angleDeg + 360) % rayCount];
-}
-
 ```
 
 ### 4-4. 맵 표시용 Quad 만들기 + 화면 패널
@@ -1168,9 +1018,261 @@ public class ImuSensor : MonoBehaviour
 
 ---
 
-## 7. 전체 테스트
+## 7. 카메라 장착과 영상 입력
 
-### 7-1. 최종 Hierarchy 구조 (요약)
+TurtleBot3 Burger에는 실제로 **전방 카메라**(Raspberry Pi Camera)가 장착되어 있습니다. 이 장에서는 그 카메라를 Unity에 구현하고, **3D 장면을 촬영해 영상(픽셀) 데이터로 입력받는** 부분을 만듭니다.
+
+### 7-1. 개념: 카메라 센서와 "영상 입력"
+
+**카메라 센서**란 3D 장면을 "본 결과"를 특정 형식의 데이터(이미지)로 변환해 출력하는 장치입니다.
+여기서 **"영상을 입력받는다"**는 것은 곧 이 절차입니다.
+
+1. Unity Camera가 로봇 전방을 바라보게 부착
+2. 카메라가 그리는 화면을 렌더 텍스처(RenderTexture)에 한 번 렌더링
+3. 렌더링된 픽셀을 `Texture2D.ReadPixels()`로 읽어 메모리(바이트 배열)에 저장 ← **영상 데이터 입력 지점**
+4. (선택) 영상 전처리 예제 — **Grayscale(흑백) 변환**
+
+| 항목 | 실제 하드웨어 (RPi Camera v2) | 이번 시뮬레이션 |
+|------|------------------------------|----------------|
+| 해상도 | 1280x720 (기본 640x480) | 640x480 (기본) |
+| 프레임 | 30fps | 30fps |
+| 화각 | 대각 약 62° (HFOV 기준) | 62° (기본) |
+| ROS 토픽 | `/image_raw` (`sensor_msgs/Image`) | `colorBytes` (RGBA32) / `grayBytes` |
+| TF | `base_link → camera_link` | `camera_link`를 `base_link` 자식으로 |
+
+**영상 입력 파이프라인 요약**
+
+```
+Unity Camera 렌더링 (RenderTexture)
+        │
+        ▼
+픽셀 읽기 (Texture2D.ReadPixels)   ← ★ "영상 입력" 핵심 동작
+        │
+        ▼
+원본 RGBA 데이터 저장 (colorBytes)
+        │
+        ▼
+영상 전처리 예제: Grayscale 변환 → grayBytes
+        │
+        ▼
+Game 뷰 우측 패널 표시  /  (나중에 ROS2로 전송)
+```
+
+> **Isaac Sim 대응**: Isaac Sim에서는 RGB 카메라(OmniGraph Camera)와 이미지 브릿지로 `sensor_msgs/Image`(`/image_raw`)를 냅니다. 여기서는 Unity Camera + `CameraSensor.cs`로 동일한 "촬영 → 영상 데이터" 개념을 직접 구현합니다.
+
+### 7-2. 카메라 부착 위치 (camera_link 만들기)
+
+카메라는 로봇 **전방**을 봐야 하므로 `base_link` 아래에 전방(+Z)을 바라보는 자식 링크를 만듭니다.
+
+```
+turtlebot3_burger
+└─ base_footprint
+   └─ base_link
+      ├─ wheel_left_link
+      ├─ wheel_right_link
+      ├─ caster_back_link
+      ├─ imu_link
+      ├─ base_scan       ← LiDAR (2장)
+      └─ camera_link     ← ★ 이번 단계 (카메라 부착 위치)
+```
+
+만드는 순서:
+
+1. Hierarchy에서 **base_link** 우클릭 → **Create Empty** → 이름을 `camera_link`로 변경
+   > 💡 만약 임포트한 URDF에 이미 `camera_link`가 있다면 새로 만들지 말고 그 오브젝트를 그대로 사용합니다.
+2. Inspector Transform 설정:
+
+| 설정 | 값 | 설명 |
+|------|-----|------|
+| Position | `(0, 0.055, 0.03)` | 좌우 0, 높이 5.5cm, 앞쪽으로 3cm |
+| Rotation | `(0, 0, 0)` | 로봇 전방(+Z)을 정면으로 바라봄 |
+
+> 💡 **전방 규칙**: 2-2에서 정한 대로 로봇 forward는 `+Z`입니다. Unity Camera는 기본으로 자신의 `+Z`를 바라보므로, `camera_link`의 Rotation이 `(0,0,0)`이면 그 시선이 곧 로봇 전방 시선이 됩니다.
+> 실제 TurtleBot3는 base_link 전방 상단에 브래킷으로 카메라를 다는 구조라, 높이(Y)는 보시는 환경에 맞게 0.02~0.1 사이에서 자유 조정해도 됩니다.
+
+### 7-3. CameraSensor 스크립트 생성
+
+Project 창 → **Assets** 우클릭 → **Create > C# Script** → 이름: `CameraSensor`
+
+```csharp
+using UnityEngine;
+
+// ############################################################
+// # CameraSensor
+// # 역할: TurtleBot3 전방 카메라(Raspberry Pi Camera)를 시뮬레이션합니다.
+// #       - Unity Camera를 camera_link에 부착해 장면을 렌더링합니다.
+// #       - RenderTexture로 렌더링한 화면을 Texture2D로 "읽어와(영상 입력)"
+// #         원본 RGBA 바이트와 Grayscale(흑백) 바이트로 저장합니다.
+// #       - Game 뷰 우측 패널에 실시간 영상을 표시합니다.
+// #       - 외부(RosBridge/RViz)에서 쓸 수 있는 데이터 API를 제공합니다.
+// # 부착 위치: camera_link (base_link의 자식, 전방 +Z를 바라보는 방향)
+// ############################################################
+[RequireComponent(typeof(Camera))]
+public class CameraSensor : MonoBehaviour
+{
+    // ---------- [TurtleBot3 카메라 사양 (Raspberry Pi Camera v2 기준)] ----------
+    // 실제 로봇: 640x480 @ 30Hz, 화각 약 62°
+    [Tooltip("영상 가로 해상도(픽셀)")]
+    public int width = 640;
+    [Tooltip("영상 세로 해상도(픽셀)")]
+    public int height = 480;
+    [Tooltip("캡처 주기(Hz). 실제 turtlebot3 기본 30Hz")]
+    public float captureRate = 30f;
+    [Tooltip("수평 화각(FOV, 도). RPi Camera v2 기본 약 62°")]
+    public float fov = 62f;
+
+    [Header("표시 설정")]
+    [Tooltip("Game 뷰 우측에 실시간 영상 패널 표시 (RViz ImagePanel 대용)")]
+    public bool showOnScreen = true;
+    [Tooltip("흑백(Grayscale) 결과도 표시 (영상 처리 학습용)")]
+    public bool showGrayscale = true;
+
+    [Header("캡처 결과 (외부에서 읽음)")]
+    public Texture2D capturedTexture;   // 원본 컬러 텍스처 (Game 뷰 표시용)
+    public byte[] colorBytes;           // 원본 RGBA32 바이트 (width*height*4바이트)
+    public byte[] grayBytes;            // Grayscale 바이트 (width*height바이트, 0~255)
+
+    private Camera cam;                 // 영상 렌더링용 Unity Camera
+    private RenderTexture rt;           // 렌더링 대기 렌더텍스처
+    private Texture2D grayTexture;      // 흑백 표시용 텍스처
+    private float captureTimer = 0f;
+
+    void Awake()
+    {
+        // 1) Unity Camera 설정 (자식 트리이므로 로봇이 움직이면 카메라도 함께 따라갑니다)
+        cam = GetComponent<Camera>();
+        cam.fieldOfView = fov;                          // 화각 (실제 카메라와 유사한 62°)
+        cam.nearClipPlane = 0.02f;                      // 아주 가까운 곳도 보이도록
+        cam.farClipPlane = 20f;
+        cam.clearFlags = CameraClearFlags.SolidColor;   // 배경을 단색으로 (하늘색 방지)
+        cam.backgroundColor = new Color(0.25f, 0.27f, 0.30f);
+        cam.enabled = false;                            // 수동 캡처 전용 (중복 렌더링 방지)
+
+        // 2) 렌더 텍스처 생성 — 카메라가 여기에 렌더링되고 우리가 픽셀을 읽습니다.
+        //    targetTexture가 지정되면 Game 뷰 화면에는 중복 표시되지 않습니다.
+        rt = new RenderTexture(width, height, 24);
+        cam.targetTexture = rt;
+
+        // 3) 데이터 버퍼/텍스처 초기화
+        colorBytes = new byte[width * height * 4];   // RGBA32 (픽셀당 4바이트)
+        grayBytes = new byte[width * height];
+        capturedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        grayTexture = new Texture2D(width, height, TextureFormat.R8, false);
+    }
+
+    void Start()
+    {
+        // 초기화 확인용 로그: 이 로그가 보이면 "영상 입력 경로"가 정상 동작 중입니다.
+        Debug.Log($"[CameraSensor] 초기화됨. camera={gameObject.name}, 해상도={width}x{height}@{captureRate}Hz, FOV={fov}°, 전방(+Z) 바라봄, targetTexture={rt.width}x{rt.height}");
+    }
+
+    void Update()
+    {
+        // 캡처 주기 제한: 매 프레임 렌더링/ReadPixels는 무거우므로 captureRate(예: 30Hz)마다 1회만 실행
+        captureTimer += Time.deltaTime;
+        if (captureTimer >= 1f / captureRate)
+        {
+            captureTimer = 0f;
+            CaptureFrame();   // ★ 이 메서드가 "영상을 입력받는" 핵심 동작
+        }
+    }
+
+    // 영상 입력 파이프라인:
+    //   ① 카메라 렌더링 → ② 픽셀 읽기(ReadPixels) → ③ 원본 저장(colorBytes) → ④ Grayscale 전처리
+    void CaptureFrame()
+    {
+        // ① 카메라를 RenderTexture에 한 번 렌더링 (수동 렌더: 캡처 시점에만 수행)
+        cam.Render();
+
+        // ② 렌더링 결과를 Texture2D로 읽어옴 ← 여기가 "영상 데이터 입력" 시점
+        RenderTexture prevActive = RenderTexture.active;
+        RenderTexture.active = rt;
+        capturedTexture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        capturedTexture.Apply();
+        RenderTexture.active = prevActive;
+
+        // ③ 원본 컬러 데이터로 저장 (픽셀 1개 = R,G,B,A 4바이트)
+        Color32[] pixels = capturedTexture.GetPixels32();
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            colorBytes[i * 4 + 0] = pixels[i].r;
+            colorBytes[i * 4 + 1] = pixels[i].g;
+            colorBytes[i * 4 + 2] = pixels[i].b;
+            colorBytes[i * 4 + 3] = pixels[i].a;
+        }
+
+        // ④ 영상 처리 예제: 컬러 → Grayscale (ITU-R BT.601 계수: Y = 0.299R + 0.587G + 0.114B)
+        for (int i = 0; i < grayBytes.Length; i++)
+        {
+            byte r = colorBytes[i * 4 + 0];
+            byte g = colorBytes[i * 4 + 1];
+            byte b = colorBytes[i * 4 + 2];
+            grayBytes[i] = (byte)(0.299f * r + 0.587f * g + 0.114f * b);
+        }
+        grayTexture.SetPixelData(grayBytes, 0);
+        grayTexture.Apply();
+    }
+
+    // Game 뷰 우측에 원본 + 흑백 영상을 실시간 표시 (RViz ImagePanel과 같은 역할)
+    void OnGUI()
+    {
+        if (!showOnScreen || capturedTexture == null) return;
+
+        float panelW = 200f, panelH = 150f;
+        float right = Screen.width - panelW - 10f;
+        float top = 10f;
+
+        // RenderTexture는 픽셀 원점이 좌하단이라, GUI(좌상단 원점)에 그대로 그리면
+        // 상/하가 뒤집힙니다. → rect 높이를 음수로 만들어 DrawTexture를 상하 반전시켜 보정합니다.
+        GUI.DrawTexture(new Rect(right, top + panelH, panelW, -panelH), capturedTexture);
+        GUI.Label(new Rect(right, top + panelH - 16, panelW, 16), "  [CameraSensor] RGB");
+
+        if (showGrayscale)
+        {
+            GUI.DrawTexture(new Rect(right, top + panelH * 2 + 10, panelW, -panelH), grayTexture);
+            GUI.Label(new Rect(right, top + panelH * 2 + 10 - 16, panelW, 16), "  Grayscale(흑백)");
+        }
+    }
+
+    // ---------- 외부 데이터 API ----------
+    // (나중에 10장 RosBridge 확장에서 sensor_msgs/Image payload로 그대로 직렬화 가능)
+    public byte[] GetColorBytes() => colorBytes;
+    public byte[] GetGrayBytes() => grayBytes;
+    public Texture2D GetCapturedTexture() => capturedTexture;
+}
+```
+
+> ⚠️ **주의사항**
+> - **Main Camera는 그대로 둡니다.** 센서 카메라는 `targetTexture`가 지정되어 Game 뷰 화면에는 그려지지 않고 RenderTexture에만 그립니다. 주 화면은 기존 Main Camera가 담당합니다.
+> - **화면(패널)에 로봇 몸통(lds, 바퀴)이 보여도 정상입니다.** 실제 로봇 카메라도 자기 몸 일부가 보입니다. 그것을 제외하고 싶으면 `cam.cullingMask`에서 로봇 레이어를 빼면 되지만, 여기서는 학습 목적으로 그대로 둡니다.
+> - **성능**: 카메라를 30fps로 계속 캡처하면 LiDAR/맵핑과 함께 부하가 커질 수 있습니다. 느려지면 `captureRate`를 15~10으로 줄이거나 `width/height`를 320x240으로 낮춥니다.
+
+### 7-4. 스크립트 연결 (장착)
+
+1. Hierarchy에서 **camera_link** 선택
+2. **Add Component > CameraSensor** 추가 → `[RequireComponent(typeof(Camera))]` 덕분에 Unity **Camera가 자동으로 함께 추가**됩니다.
+3. 값 확인 (기본값이 실제 하드웨어와 유사):
+   - **width** = 640 / **height** = 480 / **captureRate** = 30 / **fov** = 62
+   - **showOnScreen** / **showGrayscale** = `true` 유지
+
+### 7-5. Play 테스트 (영상 입력 확인)
+
+1. **Play** 시작
+2. Game 뷰 **우측 상단**에 **RGB(원본 컬러) + Grayscale(흑백)** 패널이 표시되는지 확인
+3. W/S/A/D로 이동 → 카메라 패널의 장면이 함께 달라지는지 확인
+4. 장애물(Obstacle1~3) 앞으로 다가가면 패널에서 장애물이 점점 크게 보이는지 확인
+5. A/D로 제자리 회전 → 장애물이 화면 좌우로 지나가는지 확인 (카메라가 로봇과 함께 회전)
+6. Scene 뷰에서 `camera_link`를 선택하면 카메라 프러스텀(렌즈 모양)이 전방(+Z)을 향하는지 점검
+
+> **ROS 대응**: 이 바이트 배열이 실제 로봇에서는 `sensor_msgs/Image` `/image_raw` 토픽으로 발행됩니다 (frame_id = `camera`).
+> `CameraSensor`의 `colorBytes`(RGBA32) 또는 `grayBytes`은 그대로 한 프레임 영상 payload입니다.
+> 나중에 **10장의 RosBridge 확장**(예: msgType=4, PNG 압축 또는 원시 바이트)으로 보내면 RViz2의 **Image Panel**에서 동일 영상을 확인할 수 있습니다.
+
+---
+
+## 8. 전체 테스트
+
+### 8-1. 최종 Hierarchy 구조 (요약)
 
 ```
 turtlebot3_burger
@@ -1183,24 +1285,27 @@ turtlebot3_burger
       ├─ wheel_right_link
       ├─ imu_link
       │   └─ ImuSensor     (이번 단계)
-      └─ base_scan
-          ├─ LidarRotator  (LidarSensor 생성)
-          └─ LidarSensor   (이번 단계)
+      ├─ base_scan
+      │   ├─ LidarRotator  (LidarSensor 생성)
+      │   └─ LidarSensor   (이번 단계)
+      └─ camera_link       (없으면 생성)
+          └─ CameraSensor  (이번 단계, Camera 자동 첨부)
 
 Obstacle1 / Obstacle2 / Obstacle3   (장애물)
 MapDisplay (Quad + MapRenderer)     (맵)
 ```
 
-### 7-2. 페이즈별 시나리오
+### 8-2. 페이즈별 시나리오
 
 1. **Play 시작**
 2. Scene 뷰에서 LiDAR 녹색 링 확인
 3. 화면 좌상단에 Odometry / IMU 값 표시 확인
-4. W/S/A/D로 로봇 이동
-5. 장애물 주변을 지나며 MapDisplay가 검정/흰색으로 채워지는지 확인
-6. 맵이 로봇 경로를 따라 점진적으로 그려지는 모습 관찰
+4. Game 뷰 우측 상단에 카메라 RGB/Grayscale 영상이 갱신되는지 확인
+5. W/S/A/D로 로봇 이동
+6. 장애물 주변을 지나며 MapDisplay가 검정/흰색으로 채워지는지 확인
+7. 맵이 로봇 경로를 따라 점진적으로 그려지는 모습 관찰
 
-### 7-3. 확인 포인트
+### 8-3. 확인 포인트
 
 ```
 ✅ LiDAR: 회전 레이저 + 360° 각도별 거리 (ranges[360])
@@ -1208,11 +1313,12 @@ MapDisplay (Quad + MapRenderer)     (맵)
 ✅ 맵: MapDisplay에 장애물이 검정 점, 빈 공간이 흰색(free)으로 표시 (RViz Map 규칙)
 ✅ 오도메트리: 위치/방향/속도가 이동에 따라 갱신
 ✅ IMU: 회전 시 각속도, 가감속 시 가속도 변화
+✅ 카메라: 전방 RGB/Grayscale 영상이 Game 뷰 패널로 실시간 출력 (640x480 @ 30fps)
 ```
 
 ---
 
-## 8. 문제 해결 체크리스트
+## 9. 문제 해결 체크리스트
 
 ### 문제 1: 레이저 라인이 보이지 않음
 
@@ -1253,6 +1359,16 @@ MapDisplay (Quad + MapRenderer)     (맵)
 | fixedDeltaTime 기본값(0.02) 유지 | Time Manager |
 | filter 값 | 노이즈가 심하면 더 부드럽게 |
 
+### 문제 6: 카메라 영상이 안 나옴
+
+| 확인 | 해결 |
+|------|------|
+| camera_link에 CameraSensor가 부착됐는지 | Add Component 확인 |
+| showOnScreen가 체크인지 | Inspector 확인 |
+| Main Camera 대신 센서 카메라로만 보고 있는지 | 센서 카메라는 targetTexture 전용이므로 Game 뷰 주 화면은 Main Camera 사용 |
+| 캡처/화면이 뚝뚝 끊기는지 (성능) | captureRate를 15~10으로, 해상도를 320x240으로 낮춤 |
+| OnGUI 패널끼리 겹치는지 | 카메라 패널은 우상단, 맵 패널(4장)은 좌상단 아래라 기본적으로 겹치지 않음 |
+
 ---
 
 ## 파일 구조 (06단계 최종)
@@ -1271,6 +1387,7 @@ Assets\
   MapRenderer.cs              ← 이번 단계 (맵핑)
   OdometrySensor.cs           ← 이번 단계 (오도메트리)
   ImuSensor.cs                ← 이번 단계 (IMU)
+  CameraSensor.cs             ← 이번 단계 (카메라)
 ```
 
 ---
@@ -1286,17 +1403,18 @@ Assets\
 | MapRenderer (occupancy) | SLAM 패키지 (cartographer/gmapping) |
 | OdometrySensor | `Isaac Compute Odometry` + `/odom` |
 | ImuSensor | ROS2 IMU 브릿지 `/imu` |
-| TF 개념 | `odom → base_link → base_scan` 트리 |
+| CameraSensor (RGB/Grayscale) | RGB 카메라 + `sensor_msgs/Image` `/image_raw` |
+| TF 개념 | `odom → base_link → base_scan · camera_link` 트리 |
 
 > **다음 단계(7단계)**: 이 센서 데이터를 **TCP/IP나 ROS2 브릿지로 외부 Python으로 전송**하여 실제 SLAM 패키지(cartographer)로 맵을 만드는 확장.
 
 ---
 
-## 9. ROS2 RViz2로 맵/센서 전송 (브릿지 연동)
+## 10. ROS2 RViz2로 맵/센서 전송 (브릿지 연동)
 
 이 단계까지 만든 Unity 센서/맵 데이터를 **실제 ROS2 환경(Jazzy, Docker)의 RViz2**에 그대로 표시하는 확장입니다. Unity는 TCP 서버가 되고, 컨테이너 안의 Python 노드가 데이터를 받아 `nav_msgs/OccupancyGrid`, `sensor_msgs/LaserScan`, `nav_msgs/Odometry`, `tf`로 발행합니다.
 
-### 9-1. 통신 구조와 좌표 변환 원리
+### 10-1. 통신 구조와 좌표 변환 원리
 
 ```
 Windows                                          Docker 컨테이너(ros_jazzy1)
@@ -1316,7 +1434,7 @@ UnityBridge (unity_bridge.py, TCP 클라이언트 → host.docker.internal:8765)
 
 > **왜 요각 변환이 필요한가?** Unity는 +Z가 "정면"이고 +X가 "오른쪽"이지만, ROS(REP-103)는 +X가 정면입니다. 따라서 Unity 0°(정북·+Z)를 ROS에서는 90°(동쪽)로 보정해야 로봇/스캔이 맵 위에 정확히 정렬됩니다.
 
-### 9-2. 파일 배치와 실행 절차
+### 10-2. 파일 배치와 실행 절차
 
 새 파일 3개 (기존 `MapRenderer.cs`, `LidarSensor.cs`는 4장에서 만든 버전 그대로 사용):
 
@@ -2104,7 +2222,7 @@ if __name__ == "__main__":
 >
 > **주의**: Windows 방화벽이 8765 포트 인바운드를 막으면 컨테이너가 접속하지 못하므로, 01단계에서 했던 것처럼 해당 포트를 허용해야 합니다.
 
-### 9-3. 오류 확인 요령
+### 10-3. 오류 확인 요령
 
 | 증상 | 확인할 것 |
 |------|-----------|
@@ -2117,3 +2235,73 @@ if __name__ == "__main__":
 
 > **출처**: NVIDIA Isaac Sim ROS2 튜토리얼 (RTX Lidar, Transform Trees and Odometry)를 Unity 기반으로 번안  
 > **최종 업데이트**: 2026년 9월
+
+---
+
+## 11. 부록: LiDAR 형상 변경 (LDS-02 / LDS-03 메시 스위쳐)
+
+### 11-1. 왜 형상을 바꾸나?
+
+05단계에서 URDF로 임포트한 `lds`(base_scan의 자식)는 **LDS-01 클래식 원통형**(`lds.stl`)입니다.
+하지만 실제 TurtleBot3 하드웨어는 제조 시기(1-1 참고)에 따라 외형이 다른 LiDAR가 장착됩니다.
+
+| 버전 | 실제 제품 | 크기 | 외형 |
+|------|-----------|------|------|
+| **LDS-01** | 클래식 (LDS-01) | Ø75 x 45 mm 수준 | 원통형 + 벽 브래킷 |
+| **LDS-02** | LD08 (로보티스 브랜드 제품) | 70 x 90 x 42 mm | 얇은 원반형 |
+| **LDS-03** | COIN-D4 (로보티스 브랜드 제품) | 54.7 x 39.7 x 34 mm | 네모 각형 |
+
+### 11-2. 메시 파일 준비 (가장 중요)
+
+> ⚠️ **공식 오픈소스 저장소에는 LDS-02/03 전용 STL 메시가 없습니다.** 아래에서 실제 CAD 파일(STL/FBX)을 직접 구해야 합니다.
+> - **ROBOTIS 다운로드센터 (도면 카테고리)**: https://en.robotis.com/service/downloadpage.php?ca_id=70
+> - **GrabCAD 라이브러리**: `LD08` 또는 `COIN-D4` 키워드로 검색
+> - 확보 전까지는 기본 LDS-01 형상으로 진행해도 동작에는 문제가 없습니다.
+
+받은 파일을 아래 폴더에 넣고 Unity 창으로 돌아오면 자동 임포트됩니다.
+
+```text
+TurtleBot3\Assets\URDF\meshes\sensors\
+├─ lds.stl          ← 기존 (LDS-01, 건드리지 않음)
+├─ LDS-02.stl       ← 추가 (원반형)   ※ LDS_02.stl / lds02.stl / LD08.stl / lds_1.stl 도 자동 감지
+└─ LDS-03.stl       ← 추가 (각형)     ※ LDS_03.stl / lds03.stl / COIN-D4.stl / LD19.stl / lds_1.stl 도 자동 감지
+```
+
+> 💡 **단위 주의**: 받은 STL은 보통 **mm 단위**라서 그대로 넣으면 커 보입니다.
+> 스위처가 `scale 0.001`(mm → m)을 **기본 적용**하므로 별도 설정이 없어도 됩니다.
+> Unity STL 임포트 대화창의 **File Scale = 0.001** 을 미리 설정해 둔 경우는
+> 메시 자체가 m 단위가 되므로 **프리셋 scale을 1로** 바꿔야 합니다 (이중 축소 방지).
+
+### 11-3. 에디터 스위처 사용
+
+메뉴 **Tools > TurtleBot3 > LDS Sensor Switcher** 창을 엽니다. (Play 중에는 동작하지 않으므로 **에디터(편집) 모드**에서 실행)
+
+```text
+[ 1. 대상 찾기 ]  → "씬에서 lds 노드 자동 찾기" 클릭
+                  → "발견된 경로"에  .../base_scan/lds  표시 확인
+[ 2. 모델 적용 ]  → LDS-02 또는 LDS-03 프리셋의 Mesh 필드에 임포트된 메시가
+                   자동 채워졌는지 확인 (안 되면 직접 드래그)
+                  → "이 모델로 적용" 클릭
+[ 3. 되돌리기  ]  → "URDF 기본(LDS-01)으로 복원" 클릭 시 lds.prefab 원본으로 복원
+```
+
+- 프리셋별로 `Mesh` / `Material(선택)` / `position` / `rotation` / `scale` 을 독립 저장합니다.
+- LDS-01 을 선택하면 별도 메시 없이 원본으로 복원됩니다.
+- 창을 열면 자동으로 대상 탐색 + 임포트된 메시 감지를 수행하므로, 대부분 **버튼 몇 번**으로 끝납니다.
+
+### 11-4. 보정 값 (필요할 때만)
+
+교체 후 모양/크기/방향이 어긋나면 프리셋의 보정 값을 수정하고 다시 [이 모델로 적용]을 누릅니다.
+
+| 항목 | 기본값 | 언제 바꾸나 |
+|------|--------|------------|
+| `scale` | 0.001 | 외부 STL(mm 단위) → m 환산. 이미 m 단위면 1로 |
+| `rotation` (deg) | 0 | 모델이 돌아가 있으면 90, 180 단위로 회전 |
+| `position` (m) | 0 | 센서 높이/앞뒤 위치 미세 보정 |
+
+### 11-5. 확인 포인트와 주의사항
+
+- **확인**: Scene 뷰에서 `base_scan` 위에 형상이 교체된 것과, 원형/각형 등 모델 특유의 외형이 나타나는지 확인.
+- **센서 동작은 무관**: 레이저 스캔 원점·높이·각도는 `base_scan`에 부착된 `LidarSensor`가 담당하므로, 형상 교체 후에도 Play 시 스캔/맵핑 동작은 그대로 유지됩니다.
+- **저장**: [이 모델로 적용] 시 씬이 자동 저장 대상(`MarkSceneDirty`)이 됩니다. `Ctrl+S`로 최종 저장.
+- **되돌리기**: 언제든 [URDF 기본(LDS-01)으로 복원] 버튼으로 원래 형상 복원 가능. 여러 번 왔다갔다 해도 안전합니다.
