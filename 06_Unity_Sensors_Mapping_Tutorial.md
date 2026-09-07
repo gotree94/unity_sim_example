@@ -1093,6 +1093,170 @@ turtlebot3_burger
 
 Project 창 → **Assets** 우클릭 → **Create > C# Script** → 이름: `CameraSensor`
 
+**CODE1**
+```csharp
+using UnityEngine;
+using Unity.Collections;   // NativeArray (GetRawTextureData) 사용
+
+// ############################################################
+// # CameraSensor
+// # 역할: TurtleBot3 전방 카메라(Raspberry Pi Camera)를 시뮬레이션합니다.
+// #       - Unity Camera를 camera_link에 부착해 장면을 렌더링합니다.
+// #       - RenderTexture로 렌더링한 화면을 Texture2D로 "읽어와(영상 입력)"
+// #         원본 RGBA 바이트와 Grayscale(흑백) 바이트로 저장합니다.
+// #       - Game 뷰 우측 패널에 실시간 영상을 표시합니다.
+// #       - 외부(RosBridge/RViz)에서 쓸 수 있는 데이터 API를 제공합니다.
+// # 부착 위치: camera_link (base_link의 자식, 전방 +Z를 바라보는 방향)
+// ############################################################
+[RequireComponent(typeof(Camera))]
+public class CameraSensor : MonoBehaviour
+{
+    // ---------- [TurtleBot3 카메라 사양 (Raspberry Pi Camera v2 기준)] ----------
+    // 실제 로봇: 640x480 @ 30Hz, 화각 약 62°
+    [Tooltip("영상 가로 해상도(픽셀)")]
+    public int width = 640;
+    [Tooltip("영상 세로 해상도(픽셀)")]
+    public int height = 480;
+    [Tooltip("CPU 데이터 캡처 주기(Hz). 기본 10Hz — 화면 표시는 RenderTexture를 직접 그려 이 값과 무관")]
+    public float captureRate = 10f;
+    [Tooltip("수평 화각(FOV, 도). RPi Camera v2 기본 약 62°")]
+    public float fov = 62f;
+
+    [Header("표시 설정")]
+    [Tooltip("Game 뷰 우측에 실시간 영상 패널 표시 (RViz ImagePanel 대용)")]
+    public bool showOnScreen = true;
+    [Tooltip("흑백(Grayscale) 결과도 표시 (영상 처리 학습용)")]
+    public bool showGrayscale = true;
+
+    [Header("캡처 결과 (외부에서 읽음)")]
+    public Texture2D capturedTexture;   // 원본 컬러 텍스처 (Game 뷰 표시용)
+    public byte[] colorBytes;           // 원본 RGBA32 바이트 (width*height*4바이트)
+    public byte[] grayBytes;            // Grayscale 바이트 (width*height바이트, 0~255)
+
+    private Camera cam;                 // 영상 렌더링용 Unity Camera
+    private RenderTexture rt;           // 렌더링 대기 렌더텍스처
+    private Texture2D grayTexture;      // 흑백 표시용 텍스처
+    private byte[] grayRgba;            // 흑백 표시용 RGBA 버퍼 (회색 = R=G=B)
+    private float captureTimer = 0f;
+
+    void Awake()
+    {
+        // 1) Unity Camera 설정 (자식 트리이므로 로봇이 움직이면 카메라도 함께 따라갑니다)
+        cam = GetComponent<Camera>();
+        cam.fieldOfView = fov;                          // 화각 (실제 카메라와 유사한 62°)
+        cam.nearClipPlane = 0.02f;                      // 아주 가까운 곳도 보이도록
+        cam.farClipPlane = 20f;
+        cam.clearFlags = CameraClearFlags.SolidColor;   // 배경을 단색으로 (하늘색 방지)
+        cam.backgroundColor = new Color(0.25f, 0.27f, 0.30f);
+        cam.enabled = false;                            // 수동 캡처 전용 (중복 렌더링 방지)
+
+        // 2) 렌더 텍스처 생성 — 카메라가 여기에 렌더링되고 우리가 픽셀을 읽습니다.
+        //    targetTexture가 지정되면 Game 뷰 화면에는 중복 표시되지 않습니다.
+        rt = new RenderTexture(width, height, 24);
+        cam.targetTexture = rt;
+
+        // 3) 데이터 버퍼/텍스처 초기화
+        colorBytes = new byte[width * height * 4];   // RGBA32 (픽셀당 4바이트)
+        grayBytes = new byte[width * height];        // 흑백(단채널) 데이터 (외부 전송용)
+        grayRgba = new byte[width * height * 4];     // 흑백 표시용 RGBA (GUI는 단채널 R8을 그리면 빨갛게 나온다)
+        capturedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        grayTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+    }
+
+    void Start()
+    {
+        // 초기화 확인용 로그: 이 로그가 보이면 "영상 입력 경로"가 정상 동작 중입니다.
+        Debug.Log($"[CameraSensor] 초기화됨. camera={gameObject.name}, 해상도={width}x{height}@{captureRate}Hz, FOV={fov}°, 전방(+Z) 바라봄, targetTexture={rt.width}x{rt.height}");
+    }
+
+    void Update()
+    {
+        // 캡처 주기 제한: CPU 데이터 캡처(렌더링+ReadPixels)는 무거우므로 captureRate(기본 10Hz)마다 1회만 실행
+        captureTimer += Time.deltaTime;
+        if (captureTimer >= 1f / captureRate)
+        {
+            captureTimer = 0f;
+            CaptureFrame();   // ★ 이 메서드가 "영상을 입력받는" 핵심 동작
+        }
+    }
+
+    // 영상 입력 파이프라인:
+    //   ① 카메라 렌더링 → ② 픽셀 읽기(ReadPixels) → ③ 원본 저장(colorBytes) → ④ Grayscale 전처리
+    void CaptureFrame()
+    {
+        // ① CPU 데이터용 캡처 직전에만 카메라를 RenderTexture에 렌더링 (수동 렌더)
+        //    (화면 표시는 이와 무관하게 rt를 직접 그리므로, 이 렌더는 데이터 캡처(10Hz) 때만 동작)
+        cam.Render();
+
+        // ② 렌더링 결과를 Texture2D로 읽어옴 ← 여기가 "영상 데이터 입력" 시점
+        RenderTexture prevActive = RenderTexture.active;
+        RenderTexture.active = rt;
+        capturedTexture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        capturedTexture.Apply();
+        RenderTexture.active = prevActive;
+
+        // ③ 원본 컬러 데이터로 저장 (픽셀 1개 = R,G,B,A 4바이트)
+        //    GetRawTextureData<byte>()는 텍스처 내부 픽셀 버퍼의 네이티브 참조를 반환하고,
+        //    preallocated colorBytes로 바로 복사하므로 매 캡처 배열 할당이 없어 GC 부하가 감소합니다.
+        //    (GetPixels32(Color32[]) 재사용 오버로드는 Unity 버전에 따라 없을 수 있어 사용하지 않습니다)
+        NativeArray<byte> raw = capturedTexture.GetRawTextureData<byte>();
+        raw.CopyTo(colorBytes);   // RGBA32 순서 그대로 복사
+        raw.Dispose();            // 네이티브 참조 해제 (누수 방지)
+
+        // ④ 영상 처리 예제: 컬러 → Grayscale (ITU-R BT.601 계수: Y = 0.299R + 0.587G + 0.114B)
+        for (int i = 0; i < grayBytes.Length; i++)
+        {
+            byte r = colorBytes[i * 4 + 0];
+            byte g = colorBytes[i * 4 + 1];
+            byte b = colorBytes[i * 4 + 2];
+            grayBytes[i] = (byte)(0.299f * r + 0.587f * g + 0.114f * b);
+        }
+        // 표시용: R8(단채널) 텍스처를 GUI로 그리면 붉은색만 나오므로,
+        // 회색(R=G=B)으로 채운 RGBA 버퍼를 만들어 GPU에 올립니다.
+        for (int i = 0; i < grayBytes.Length; i++)
+        {
+            byte gv = grayBytes[i];
+            grayRgba[i * 4 + 0] = gv;
+            grayRgba[i * 4 + 1] = gv;
+            grayRgba[i * 4 + 2] = gv;
+            grayRgba[i * 4 + 3] = 255;
+        }
+        grayTexture.SetPixelData(grayRgba, 0);
+        grayTexture.Apply();
+    }
+
+    // Game 뷰 우측에 원본 + 흑백 영상을 실시간 표시 (RViz ImagePanel과 같은 역할)
+    void OnGUI()
+    {
+        if (!showOnScreen || capturedTexture == null) return;
+
+        float panelW = 200f, panelH = 150f;
+        float right = Screen.width - panelW - 10f;
+        float top = 10f;
+
+        // RenderTexture는 픽셀 원점이 좌하단이라, GUI(좌상단 원점)에 그대로 그리면
+        // 상/하가 뒤집힙니다. → rect 높이를 음수로 만들어 DrawTexture를 상하 반전시켜 보정합니다.
+        // ★ RGB 패널은 CPU ReadPixels 없이 RenderTexture(rt)를 직접 그립니다.
+        //   (매 프레임 ReadPixels는 GPU 동기화 스털을 일으켜 에디터 전체가 멈출 수 있음)
+        GUI.DrawTexture(new Rect(right, top + panelH, panelW, -panelH), rt);
+        GUI.Label(new Rect(right, top + panelH - 16, panelW, 16), "  [CameraSensor] RGB");
+
+        if (showGrayscale)
+        {
+            GUI.DrawTexture(new Rect(right, top + panelH * 2 + 10, panelW, -panelH), grayTexture);
+            GUI.Label(new Rect(right, top + panelH * 2 + 10 - 16, panelW, 16), "  Grayscale(흑백)");
+        }
+    }
+
+    // ---------- 외부 데이터 API ----------
+    // (나중에 10장 RosBridge 확장에서 sensor_msgs/Image payload로 그대로 직렬화 가능)
+    public byte[] GetColorBytes() => colorBytes;
+    public byte[] GetGrayBytes() => grayBytes;
+    public Texture2D GetCapturedTexture() => capturedTexture;
+}
+```
+
+**CODE2**
 ```csharp
 using UnityEngine;
 using Unity.Collections;   // NativeArray (GetRawTextureData) 사용
