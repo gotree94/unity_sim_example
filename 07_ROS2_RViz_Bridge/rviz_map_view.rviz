@@ -1,0 +1,76 @@
+# RViz2 설정 파일 — Unity TurtleBot3 시뮬레이션 데이터 표시용
+# 사용: rviz2 -d /mnt/d/github/unity_sim_example/07_ROS2_RViz_Bridge/rviz_map_view.rviz
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+    Views:
+      - Class: rviz_default_plugins/Orbit
+        Name: Orbit View
+Visibility:
+  Grid: true
+  Map: true
+  LaserScan: true
+  TF: true
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Value: true
+      Plane Cell Count: 20
+      Plane Cell Size: 1
+      Plane State: XY
+    - Alpha: 0.9
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: true
+      Name: Map
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /map
+      Update Topic:
+        QOS:
+          Depth: 1
+          Durability Policy: Transient Local
+          Reliability Policy: Reliable
+        Value: /map
+      Value: true
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: LaserScan
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /scan
+      Value: true
+      Size (Pixels): 3
+      Color: 255; 0; 0
+      Color Style: Flat Color
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Value: true
+      Show Names: true
+      Show Arrows: false
+      Frame Timeout: 15
+  Global Options:
+    Background Color: 77; 77; 77
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Window Geometry:
+    Width: 1400
+    Height: 900
